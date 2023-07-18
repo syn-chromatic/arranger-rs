@@ -18,12 +18,16 @@ impl PythonVersion {
         let name: String = format!("Python{}{}\\", self.major, self.minor);
         name
     }
+
+    pub fn get_version(&self) -> (usize, usize) {
+        (self.major, self.minor)
+    }
 }
 
 #[derive(Clone)]
 pub struct PythonEnvironment {
+    pub version: PythonVersion,
     python_path: PathBuf,
-    version: PythonVersion,
 }
 
 impl PythonEnvironment {
@@ -32,8 +36,8 @@ impl PythonEnvironment {
 
         if let Some(python_path) = python_path {
             let environment: PythonEnvironment = PythonEnvironment {
-                python_path,
                 version,
+                python_path,
             };
             return Some(environment);
         }
@@ -53,57 +57,5 @@ impl PythonEnvironment {
             return Some(python_path);
         }
         None
-    }
-}
-
-pub struct VirtualEnv {
-    environment: PythonEnvironment,
-}
-
-impl VirtualEnv {
-    pub fn new(environment: &PythonEnvironment) -> Self {
-        let environment: PythonEnvironment = environment.clone();
-        VirtualEnv { environment }
-    }
-
-    pub fn create_virtual_env(&self) {
-        let pip = Pip::new(&self.environment);
-
-        let python_executable: PathBuf = self.environment.get_python_executable();
-        let venv_name: String = self.get_virtual_env_name();
-        let venv_args: [&str; 3] = ["-m", "virtualenv", &venv_name];
-        let package_name = "virtualenv";
-        let pip_show = pip.find_package(package_name);
-
-        let mut venv_installed = false;
-
-        if let Some(pip_show) = pip_show {
-            let pip_name: Option<&str> = pip_show.get_name();
-            if let Some(pip_name) = pip_name {
-                if pip_name == package_name {
-                    venv_installed = true;
-                }
-            }
-        }
-
-        if !venv_installed {
-            println!("INSTALLING PACKAGE");
-            pip.install_package(package_name);
-        }
-
-        println!("CREATING VIRTUAL ENV");
-        let command: CommandE = CommandE::new();
-        let response: Option<CommandR> = command.execute_command(&python_executable, &venv_args);
-        if let Some(response) = response {
-            println!("{:?}", response);
-        }
-    }
-
-    fn get_virtual_env_name(&self) -> String {
-        let major: usize = self.environment.version.major;
-        let minor: usize = self.environment.version.minor;
-
-        let name: String = format!("pyenv{}{}", major, minor);
-        name
     }
 }
