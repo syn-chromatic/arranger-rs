@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 dirs = "5.0"
-structopt = "0.3.17"
+clap = { version = "4.3.16", features = ["derive"] }

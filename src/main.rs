@@ -3,12 +3,12 @@ mod shell;
 
 use std::path::PathBuf;
 
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use dirs;
-use structopt;
-use structopt::StructOpt;
 
 use crate::python::packages::VirtualEnv;
-use crate::python::python::{PythonEnvironment, PythonVersion};
+use crate::python::python::PythonEnvironment;
+use crate::python::version::PythonVersion;
 
 fn create_virtual_env(major: usize, minor: usize) {
     let data_dir: Option<PathBuf> = dirs::data_local_dir();
@@ -27,68 +27,37 @@ fn create_virtual_env(major: usize, minor: usize) {
     }
 }
 
-#[derive(Debug)]
-enum LanguageEnum {
-    Python,
-    Invalid,
+#[derive(Debug, Parser)]
+#[command(name = "Arranger")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
 }
 
-impl std::str::FromStr for LanguageEnum {
-    type Err = LanguageEnum;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.to_lowercase() == "python" {
-            return Ok(LanguageEnum::Python);
-        }
-        Err(LanguageEnum::Invalid)
-    }
+#[derive(Debug, Subcommand)]
+enum Commands {
+    #[command(about = "Python Arranger")]
+    Python(PythonCommand),
 }
 
-impl std::fmt::Display for LanguageEnum {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            LanguageEnum::Python => write!(f, "Python"),
-            LanguageEnum::Invalid => write!(f, ""),
-        }
-    }
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(name = "Arranger", version = "0.1", about = "Python")]
-struct PythonOpt {
-    /// Set a major number
-    #[structopt(short = "M", long = "major")]
-    major: usize,
-
-    /// Set a minor number
-    #[structopt(short = "m", long = "minor")]
-    minor: usize,
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(name = "Arranger", version = "0.1", about = "Languages")]
-struct LanguageOpt {
-    /// Select a language.
-    #[structopt(short = "L", long = "language")]
-    language: LanguageEnum,
+#[derive(Debug, Parser)]
+struct PythonCommand {
+    /// Select Python version
+    #[arg(short = 'V', long = "version")]
+    version: PythonVersion,
 }
 
 fn main() {
-    let language_opt = LanguageOpt::from_args();
-    println!("language: {:?}", language_opt);
+    let opt = Cli::try_parse();
 
-    match language_opt.language {
-        LanguageEnum::Python => {
-            let python_opt = PythonOpt::from_args();
-            println!("python: {:?}", python_opt);
+    match opt {
+        Ok(opt) => match opt.command {
+            Commands::Python(python_opt) => {
+                println!("python: {:?}", python_opt);
+            }
+        },
+        Err(opt) => {
+            println!("{}", opt.to_string());
         }
-        LanguageEnum::Invalid => {}
     }
-    // if language_opt.language == LanguageEnum::Python {
-
-    // }
-
-    // let opt: PythonOpt = PythonOpt::from_args();
-    // println!("Major: {}, Minor: {}", opt.major, opt.minor);
-    // create_virtual_env(opt.major, opt.minor);
 }

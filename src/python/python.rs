@@ -1,28 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::python::pip::{Pip, PipShow};
+use crate::python::version::PythonVersion;
 use crate::shell::utils::{CommandE, CommandR};
-
-#[derive(Clone)]
-pub struct PythonVersion {
-    major: usize,
-    minor: usize,
-}
-
-impl PythonVersion {
-    pub fn new(major: usize, minor: usize) -> Self {
-        PythonVersion { major, minor }
-    }
-
-    pub fn get_folder_name(&self) -> String {
-        let name: String = format!("Python{}{}\\", self.major, self.minor);
-        name
-    }
-
-    pub fn get_version(&self) -> (usize, usize) {
-        (self.major, self.minor)
-    }
-}
 
 #[derive(Clone)]
 pub struct PythonEnvironment {
