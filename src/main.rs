@@ -45,6 +45,15 @@ struct PythonCommand {
     /// Select Python version
     #[arg(short = 'V', long = "version")]
     version: PythonVersion,
+
+    #[command(subcommand)]
+    subcommands: PythonSubCommands,
+}
+
+#[derive(Debug, Subcommand)]
+enum PythonSubCommands {
+    #[command(about = "Create Virtual Environment")]
+    VirtualEnv,
 }
 
 fn main() {
