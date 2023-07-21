@@ -1,6 +1,8 @@
 mod python;
 mod search;
 mod shell;
+mod parsers;
+mod types;
 
 use std::io::Error;
 use std::io::Write;
@@ -11,7 +13,8 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use dirs;
 use regex::Regex;
 
-use crate::python::packages::VirtualEnv;
+use crate::python::virtualenv::VirtualEnvCFG;
+use crate::python::virtualenv::VirtualEnv;
 use crate::python::python::PythonEnvironment;
 use crate::python::version::PythonVersion;
 use crate::search::file::FileSearch;
@@ -172,25 +175,41 @@ fn get_virtual_envs() {
     }
 }
 
+// fn main() {
+//     let opt: Result<Cli, ClapError> = Cli::try_parse();
+//     match opt {
+//         Ok(opt) => match opt.command {
+//             Commands::Python(python_opt) => {
+//                 println!("python: {:?}", python_opt);
+//                 match python_opt.subcommands {
+//                     PythonSubCommands::VirtualEnv => {
+//                         let (major, minor) = python_opt.version.get_version();
+//                         create_virtual_env(major, minor);
+//                     }
+//                     PythonSubCommands::FixVirtualEnvironments => {
+//                         get_virtual_envs();
+//                     }
+//                 }
+//             }
+//         },
+//         Err(opt) => {
+//             println!("{}", opt.to_string());
+//         }
+//     }
+// }
+
+use parsers::cfg_parser::CFGParser;
+
 fn main() {
-    let opt: Result<Cli, ClapError> = Cli::try_parse();
-    match opt {
-        Ok(opt) => match opt.command {
-            Commands::Python(python_opt) => {
-                println!("python: {:?}", python_opt);
-                match python_opt.subcommands {
-                    PythonSubCommands::VirtualEnv => {
-                        let (major, minor) = python_opt.version.get_version();
-                        create_virtual_env(major, minor);
-                    }
-                    PythonSubCommands::FixVirtualEnvironments => {
-                        get_virtual_envs();
-                    }
-                }
-            }
-        },
-        Err(opt) => {
-            println!("{}", opt.to_string());
-        }
-    }
+    let path = Path::new("./test.cfg").to_path_buf();
+    let cfg_vec = CFGParser::new().parse_from_file(&path).unwrap();
+    let venv_cfg = VirtualEnvCFG::new(&cfg_vec);
+
+    println!("venv_cfg: {:?}", venv_cfg);
+
+    // for cfg_line in cfg_vec {
+    //     println!("{:?}", cfg_line);
+
+    // }
+
 }
