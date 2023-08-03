@@ -37,12 +37,12 @@ impl CFGParser {
         CFGParser
     }
 
-    pub fn parse_from_file(&self, path: &PathBuf) -> Result<Vec<CFGLine>, Error> {
+    pub fn from_file(&self, path: &PathBuf) -> Result<Vec<CFGLine>, Error> {
         let content: String = std::fs::read_to_string(path)?;
-        Ok(self.parse(&content))
+        Ok(self.from_content(&content))
     }
 
-    pub fn parse(&self, text: &str) -> Vec<CFGLine> {
+    pub fn from_content(&self, text: &str) -> Vec<CFGLine> {
         let mut cfg_vec: Vec<CFGLine> = Vec::new();
         for line in text.split("\n") {
             let parsed_line: Option<(String, String)> = self.parse_line(line);

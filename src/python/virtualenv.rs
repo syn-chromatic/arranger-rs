@@ -1,25 +1,27 @@
+use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use crate::parsers::cfg_parser::CFGLine;
-use crate::python::pip::Pip;
+use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
 use crate::shell::utils::{CommandE, CommandR};
 use crate::types::version::SemanticVersion;
 
 #[derive(Debug)]
 pub struct VirtualEnvCFG {
-    home: PathBuf,
-    implementation: String,
-    version_info: SemanticVersion,
-    virtualenv: SemanticVersion,
-    include_system_site_packages: bool,
-    base_prefix: PathBuf,
-    base_exec_prefix: PathBuf,
-    base_executable: PathBuf,
+    pub home: PathBuf,
+    pub implementation: String,
+    pub version_info: SemanticVersion,
+    pub virtualenv: SemanticVersion,
+    pub include_system_site_packages: bool,
+    pub base_prefix: PathBuf,
+    pub base_exec_prefix: PathBuf,
+    pub base_executable: PathBuf,
+    pub cfg_file: PathBuf,
 }
 
 impl VirtualEnvCFG {
-    pub fn new(parsed_cfg: &Vec<CFGLine>) -> Option<Self> {
+    pub fn new(cfg_file: PathBuf, parsed_cfg: &Vec<CFGLine>) -> Option<Self> {
         let mut home: Option<PathBuf> = None;
         let mut implementation: Option<String> = None;
         let mut version_info: Option<SemanticVersion> = None;
@@ -30,21 +32,21 @@ impl VirtualEnvCFG {
         let mut base_executable: Option<PathBuf> = None;
 
         for cfg_line in parsed_cfg {
-            let cfg_name: &str = cfg_line.get_name();
-            let cfg_setting: &str = cfg_line.get_setting();
-            match cfg_name {
-                "home" => home = Some(Path::new(cfg_setting).to_path_buf()),
-                "implementation" => implementation = Some(cfg_setting.to_string()),
-                "version_info" => {
-                    version_info = Some(SemanticVersion::new_from_string(cfg_setting)?)
-                }
-                "virtualenv" => virtualenv = Some(SemanticVersion::new_from_string(cfg_setting)?),
-                "include-system-site-packages" => {
-                    include_system_site_packages = Some(Self::parse_boolean_string(cfg_setting)?)
-                }
-                "base-prefix" => base_prefix = Some(Path::new(cfg_setting).to_path_buf()),
-                "base-exec-prefix" => base_exec_prefix = Some(Path::new(cfg_setting).to_path_buf()),
-                "base-executable" => base_executable = Some(Path::new(cfg_setting).to_path_buf()),
+            let cfg_name: String = cfg_line.get_name().to_string();
+            let cfg_setting: String = cfg_line.get_setting().to_string();
+            let cfg_path: PathBuf = Path::new(&cfg_setting).to_path_buf();
+            let cfg_version: Option<SemanticVersion> = SemanticVersion::from_string(&cfg_setting);
+            let cfg_boolean: Option<bool> = Self::parse_boolean_string(&cfg_setting);
+
+            match cfg_name.as_ref() {
+                "home" => home = Some(cfg_path),
+                "implementation" => implementation = Some(cfg_setting),
+                "version_info" => version_info = Some(cfg_version?),
+                "virtualenv" => virtualenv = Some(cfg_version?),
+                "include-system-site-packages" => include_system_site_packages = Some(cfg_boolean?),
+                "base-prefix" => base_prefix = Some(cfg_path),
+                "base-exec-prefix" => base_exec_prefix = Some(cfg_path),
+                "base-executable" => base_executable = Some(cfg_path),
                 _ => return None,
             }
         }
@@ -58,6 +60,7 @@ impl VirtualEnvCFG {
             base_prefix: base_prefix.unwrap(),
             base_exec_prefix: base_exec_prefix.unwrap(),
             base_executable: base_executable.unwrap(),
+            cfg_file,
         };
         Some(venv_cfg)
     }
@@ -81,16 +84,74 @@ impl VirtualEnv {
         VirtualEnv { environment }
     }
 
+    fn get_canonical_path_string(&self, path: &PathBuf) -> Option<String> {
+        let canon_path: Result<PathBuf, Error> = path.canonicalize();
+        if let Ok(canon_path) = &canon_path {
+            let mut canon_str: &str = canon_path.to_str()?;
+            if canon_str.starts_with(r"\\?\") {
+                canon_str = canon_str.strip_prefix(r"\\?\")?;
+            }
+            return Some(canon_str.to_string());
+        }
+        None
+    }
+
+    fn get_directory_path(&self, path: PathBuf) -> PathBuf {
+        if path.is_file() {
+            if let Some(parent_path) = path.parent() {
+                return parent_path.to_path_buf();
+            }
+        }
+        path
+    }
+
+    pub fn create_virtual_env_in_path(&self, path: PathBuf) {
+        let path: PathBuf = self.get_directory_path(path);
+        let canonical_path: Option<String> = self.get_canonical_path_string(&path);
+        if let Some(canonical_path) = canonical_path {
+            let pip: Pip = Pip::new(&self.environment);
+
+            let python_executable: PathBuf = self.environment.get_python_executable();
+            let venv_args: [&str; 3] = ["-m", "virtualenv", &canonical_path];
+            let package_name: &str = "virtualenv";
+            let pip_show: Option<PipShow> = pip.find_package(package_name);
+
+            let mut venv_installed: bool = false;
+
+            if let Some(pip_show) = pip_show {
+                let pip_name: Option<&str> = pip_show.get_name();
+                if let Some(pip_name) = pip_name {
+                    if pip_name == package_name {
+                        venv_installed = true;
+                    }
+                }
+            }
+
+            if !venv_installed {
+                println!("INSTALLING PACKAGE");
+                pip.install_package(package_name);
+            }
+
+            println!("CREATING VIRTUAL ENV");
+            let command: CommandE = CommandE::new();
+            let response: Option<CommandR> =
+                command.execute_command(&python_executable, &venv_args);
+            if let Some(response) = response {
+                println!("{:?}", response);
+            }
+        }
+    }
+
     pub fn create_virtual_env(&self) {
-        let pip = Pip::new(&self.environment);
+        let pip: Pip = Pip::new(&self.environment);
 
         let python_executable: PathBuf = self.environment.get_python_executable();
         let venv_name: String = self.get_virtual_env_name();
         let venv_args: [&str; 3] = ["-m", "virtualenv", &venv_name];
-        let package_name = "virtualenv";
-        let pip_show = pip.find_package(package_name);
+        let package_name: &str = "virtualenv";
+        let pip_show: Option<PipShow> = pip.find_package(package_name);
 
-        let mut venv_installed = false;
+        let mut venv_installed: bool = false;
 
         if let Some(pip_show) = pip_show {
             let pip_name: Option<&str> = pip_show.get_name();

@@ -18,7 +18,7 @@ impl SemanticVersion {
             qualifier: qualifier.unwrap_or(String::new()),
         }
     }
-    pub fn new_from_string(string: &str) -> Option<Self> {
+    pub fn from_string(string: &str) -> Option<Self> {
         let parts: Split<'_, &str> = string.split(".");
         let mut major: Option<usize> = None;
         let mut minor: Option<usize> = None;
@@ -46,9 +46,9 @@ impl SemanticVersion {
             }
         }
         let version = SemanticVersion {
-            major: major.unwrap(),
-            minor: minor.unwrap(),
-            patch: patch.unwrap(),
+            major: major?,
+            minor: minor?,
+            patch: patch?,
             qualifier,
         };
         Some(version)
