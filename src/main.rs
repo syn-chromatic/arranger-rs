@@ -1,8 +1,7 @@
+mod general;
 mod parsers;
 mod python;
 mod search;
-mod shell;
-mod types;
 mod utils;
 
 use clap::error::Error as ClapError;
@@ -49,21 +48,18 @@ fn main() {
     let opt: Result<Cli, ClapError> = Cli::try_parse();
     match opt {
         Ok(opt) => match opt.command {
-            Commands::Python(python_opt) => {
-                println!("python: {:?}", python_opt);
-                match python_opt.subcommands {
-                    PythonSubCommands::VirtualEnv(venv_command) => {
-                        let (major, minor) = venv_command.version.get_version();
-                        create_virtual_env(major, minor);
-                    }
-                    PythonSubCommands::FixVirtualEnvironments => {
-                        fix_virtual_environments();
-                    }
+            Commands::Python(python_opt) => match python_opt.subcommands {
+                PythonSubCommands::VirtualEnv(venv_command) => {
+                    let (major, minor) = venv_command.version.get_version();
+                    create_virtual_env(major, minor);
                 }
-            }
+                PythonSubCommands::FixVirtualEnvironments => {
+                    fix_virtual_environments();
+                }
+            },
         },
         Err(opt) => {
-            println!("{}", opt.to_string());
+            println!("Error: {}", opt.to_string());
         }
     }
 }

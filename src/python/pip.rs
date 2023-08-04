@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+// use std::path::PathBuf;
 
 use crate::python::python::PythonEnvironment;
-use crate::shell::utils::{CommandE, CommandR};
+use crate::general::shell::{CommandExecute, CommandResponse};
+use crate::general::path::AbPath;
 
 pub struct Pip {
     environment: PythonEnvironment,
@@ -14,10 +15,10 @@ impl Pip {
     }
 
     pub fn find_package(&self, package: &str) -> Option<PipShow> {
-        let python_executable: PathBuf = self.environment.get_python_executable();
+        let python_executable: AbPath = self.environment.get_python_executable();
         let args: [&str; 5] = ["-m", "pip", "show", package, "--disable-pip-version-check"];
-        let command: CommandE = CommandE::new();
-        let response: Option<CommandR> = command.execute_command(&python_executable, &args);
+        let command: CommandExecute = CommandExecute::new();
+        let response: Option<CommandResponse> = command.execute_command(&python_executable, &args);
 
         if let Some(response) = response {
             let mut pip_show = PipShow::new();
@@ -29,7 +30,7 @@ impl Pip {
     }
 
     pub fn install_package(&self, package: &str) {
-        let python_executable: PathBuf = self.environment.get_python_executable();
+        let python_executable: AbPath = self.environment.get_python_executable();
         let args: [&str; 5] = [
             "-m",
             "pip",
@@ -38,8 +39,8 @@ impl Pip {
             "--disable-pip-version-check",
         ];
 
-        let command: CommandE = CommandE::new();
-        let response: Option<CommandR> = command.execute_command(&python_executable, &args);
+        let command: CommandExecute = CommandExecute::new();
+        let response: Option<CommandResponse> = command.execute_command(&python_executable, &args);
         if let Some(response) = response {
             println!("STDOUT: {}", response.get_stdout());
             println!("STDERR: {}", response.get_stderr());

@@ -1,8 +1,9 @@
-use std::io::Error;
+use std::io::{Error, Write};
 use std::path::PathBuf;
 
 use dirs;
 
+use crate::general::path::AbPath;
 use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
 use crate::python::python::PythonEnvironment;
@@ -15,7 +16,9 @@ pub fn create_virtual_env(major: usize, minor: usize) {
     let data_dir: Option<PathBuf> = dirs::data_local_dir();
 
     if let Some(data_dir) = data_dir {
-        let base_path: PathBuf = data_dir.join("Programs/Python");
+        let base_path_buf: PathBuf = data_dir.join("Programs/Python");
+        let base_path: AbPath = AbPath::from_path_buf(&base_path_buf);
+
         let python_version: PythonVersion = PythonVersion::new(major, minor);
 
         let environment: Option<PythonEnvironment> =
@@ -28,11 +31,13 @@ pub fn create_virtual_env(major: usize, minor: usize) {
     }
 }
 
-pub fn create_virtual_env_in_path(path: PathBuf, major: usize, minor: usize) {
+pub fn create_virtual_env_in_path(path: AbPath, major: usize, minor: usize) {
     let data_dir: Option<PathBuf> = dirs::data_local_dir();
 
     if let Some(data_dir) = data_dir {
-        let base_path: PathBuf = data_dir.join("Programs/Python");
+        let base_path_buf: PathBuf = data_dir.join("Programs/Python");
+        let base_path: AbPath = AbPath::from_path_buf(&base_path_buf);
+
         let python_version: PythonVersion = PythonVersion::new(major, minor);
 
         let environment: Option<PythonEnvironment> =
@@ -69,10 +74,6 @@ fn find_virtual_env_config(current_dir: &PathBuf) -> Vec<PathBuf> {
     file_search.set_exclude_directories(exclude_dirs);
 
     let files: Vec<PathBuf> = file_search.search_files();
-
-    for file in &files {
-        println!("[{:?}]", file);
-    }
     files
 }
 
@@ -105,18 +106,59 @@ fn get_virtual_env_path_string(path: &PathBuf) -> String {
     dir_str.to_string()
 }
 
+fn confirm_and_continue() -> bool {
+    let mut input = String::new();
+    print!("\nDo you want to continue? [y/N]: ");
+    std::io::stdout().flush().unwrap();
+
+    match std::io::stdin().read_line(&mut input) {
+        Ok(_) => {
+            if input.trim() == "y" || input.trim() == "Y" {
+                println!("Continuing...");
+                return true;
+            } else {
+                println!("Not continuing...");
+                return false;
+            }
+        }
+        Err(e) => {
+            println!("Failed to read line: {}", e);
+            return false;
+        }
+    }
+}
+
+fn confirm_discovered_environments(cfg_files: &Vec<PathBuf>) -> bool {
+    println!("\nFound Environments:");
+    for cfg_file in cfg_files {
+        let mut environment_directory: AbPath = cfg_file.into();
+        environment_directory.to_directory();
+
+        let directory_string = environment_directory.get_canonical_string();
+        if let Some(directory_string) = directory_string {
+            println!("Path: [{}]", directory_string);
+        }
+    }
+    confirm_and_continue()
+}
+
 fn get_virtual_env_cfgs() -> Vec<VirtualEnvCFG> {
     let current_dir: Result<PathBuf, Error> = std::env::current_dir();
     let mut venv_cfgs: Vec<VirtualEnvCFG> = Vec::new();
     if let Ok(current_dir) = current_dir {
         let cfg_files: Vec<PathBuf> = find_virtual_env_config(&current_dir);
+        let response: bool = confirm_discovered_environments(&cfg_files);
+        if !response {
+            return venv_cfgs;
+        }
 
         for cfg_file in cfg_files {
             let cfg_parser: CFGParser = CFGParser::new();
             let result: Result<Vec<CFGLine>, Error> = cfg_parser.from_file(&cfg_file);
 
             if let Ok(result) = result {
-                let venv_cfg: Option<VirtualEnvCFG> = VirtualEnvCFG::new(cfg_file, &result);
+                let cfg_path: AbPath = AbPath::from_path_buf(&cfg_file);
+                let venv_cfg: Option<VirtualEnvCFG> = VirtualEnvCFG::new(cfg_path, &result);
                 if let Some(venv_cfg) = venv_cfg {
                     venv_cfgs.push(venv_cfg);
                 }

@@ -1,23 +1,29 @@
 use std::io::Error;
-use std::path::PathBuf;
 use std::process::Output;
 use std::process::{Command, ExitStatus};
 use std::string::FromUtf8Error;
 
-pub struct CommandR {
+use core::fmt::{Debug, Formatter};
+
+use crate::general::path::AbPath;
+
+pub struct CommandResponse {
     stdout: String,
     stderr: String,
     status: ExitStatus,
 }
 
-impl CommandR {
+impl CommandResponse {
     pub fn new(output: Output) -> Option<Self> {
         let stdout: Result<String, FromUtf8Error> = String::from_utf8(output.stdout);
         let stderr: Result<String, FromUtf8Error> = String::from_utf8(output.stderr);
         let status: ExitStatus = output.status;
 
         if let (Ok(stdout), Ok(stderr)) = (stdout, stderr) {
-            let response: CommandR = CommandR {
+            let stdout: String = stdout.trim().to_string();
+            let stderr: String = stderr.trim().to_string();
+
+            let response: CommandResponse = CommandResponse {
                 stdout,
                 stderr,
                 status,
@@ -41,28 +47,28 @@ impl CommandR {
     }
 }
 
-impl core::fmt::Debug for CommandR {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Debug for CommandResponse {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let separator: String = "=".repeat(30);
         let string: String = format!(
-            "# STDOUT #\n{}\n# STDERR #\n{}\n# STATUS #\n{}",
-            self.stdout, self.stderr, self.status
+            "{}\n{}\n{}\n{}\n{}\n",
+            separator, self.stdout, self.stderr, self.status, separator,
         );
-
-        write!(f, "{}", string)
+        f.write_str(&string)
     }
 }
 
-pub struct CommandE;
+pub struct CommandExecute;
 
-impl CommandE {
+impl CommandExecute {
     pub fn new() -> Self {
-        CommandE
+        CommandExecute
     }
 
-    pub fn execute_command(&self, program: &PathBuf, args: &[&str]) -> Option<CommandR> {
+    pub fn execute_command(&self, program: &AbPath, args: &[&str]) -> Option<CommandResponse> {
         let output: Result<Output, Error> = Command::new(program).args(args).output();
         if let Ok(output) = output {
-            let response: Option<CommandR> = CommandR::new(output);
+            let response: Option<CommandResponse> = CommandResponse::new(output);
             return response;
         }
         None

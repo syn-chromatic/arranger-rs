@@ -1,40 +1,38 @@
-use std::io::Error;
-use std::path::{Path, PathBuf};
-
+use crate::general::path::AbPath;
+use crate::general::shell::{CommandExecute, CommandResponse};
+use crate::general::version::SemanticVersion;
 use crate::parsers::cfg_parser::CFGLine;
 use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
-use crate::shell::utils::{CommandE, CommandR};
-use crate::types::version::SemanticVersion;
 
 #[derive(Debug)]
 pub struct VirtualEnvCFG {
-    pub home: PathBuf,
+    pub home: AbPath,
     pub implementation: String,
     pub version_info: SemanticVersion,
     pub virtualenv: SemanticVersion,
     pub include_system_site_packages: bool,
-    pub base_prefix: PathBuf,
-    pub base_exec_prefix: PathBuf,
-    pub base_executable: PathBuf,
-    pub cfg_file: PathBuf,
+    pub base_prefix: AbPath,
+    pub base_exec_prefix: AbPath,
+    pub base_executable: AbPath,
+    pub cfg_file: AbPath,
 }
 
 impl VirtualEnvCFG {
-    pub fn new(cfg_file: PathBuf, parsed_cfg: &Vec<CFGLine>) -> Option<Self> {
-        let mut home: Option<PathBuf> = None;
+    pub fn new(cfg_file: AbPath, parsed_cfg: &Vec<CFGLine>) -> Option<Self> {
+        let mut home: Option<AbPath> = None;
         let mut implementation: Option<String> = None;
         let mut version_info: Option<SemanticVersion> = None;
         let mut virtualenv: Option<SemanticVersion> = None;
         let mut include_system_site_packages: Option<bool> = None;
-        let mut base_prefix: Option<PathBuf> = None;
-        let mut base_exec_prefix: Option<PathBuf> = None;
-        let mut base_executable: Option<PathBuf> = None;
+        let mut base_prefix: Option<AbPath> = None;
+        let mut base_exec_prefix: Option<AbPath> = None;
+        let mut base_executable: Option<AbPath> = None;
 
         for cfg_line in parsed_cfg {
             let cfg_name: String = cfg_line.get_name().to_string();
             let cfg_setting: String = cfg_line.get_setting().to_string();
-            let cfg_path: PathBuf = Path::new(&cfg_setting).to_path_buf();
+            let cfg_path: AbPath = AbPath::from_string(&cfg_setting);
             let cfg_version: Option<SemanticVersion> = SemanticVersion::from_string(&cfg_setting);
             let cfg_boolean: Option<bool> = Self::parse_boolean_string(&cfg_setting);
 
@@ -84,70 +82,32 @@ impl VirtualEnv {
         VirtualEnv { environment }
     }
 
-    fn get_canonical_path_string(&self, path: &PathBuf) -> Option<String> {
-        let canon_path: Result<PathBuf, Error> = path.canonicalize();
-        if let Ok(canon_path) = &canon_path {
-            let mut canon_str: &str = canon_path.to_str()?;
-            if canon_str.starts_with(r"\\?\") {
-                canon_str = canon_str.strip_prefix(r"\\?\")?;
-            }
-            return Some(canon_str.to_string());
-        }
-        None
-    }
+    pub fn create_virtual_env_in_path(&self, mut path: AbPath) {
+        path.to_directory();
+        let canonical_string: Option<String> = path.get_canonical_string();
 
-    fn get_directory_path(&self, path: PathBuf) -> PathBuf {
-        if path.is_file() {
-            if let Some(parent_path) = path.parent() {
-                return parent_path.to_path_buf();
-            }
-        }
-        path
-    }
+        if let Some(canonical_string) = canonical_string {
+            let python_version: String = self.environment.version.get_version_string();
+            println!(
+                "\nCreating Virtual Environment for Python {} in: {}",
+                python_version, canonical_string
+            );
 
-    pub fn create_virtual_env_in_path(&self, path: PathBuf) {
-        let path: PathBuf = self.get_directory_path(path);
-        let canonical_path: Option<String> = self.get_canonical_path_string(&path);
-        if let Some(canonical_path) = canonical_path {
-            let pip: Pip = Pip::new(&self.environment);
-
-            let python_executable: PathBuf = self.environment.get_python_executable();
-            let venv_args: [&str; 3] = ["-m", "virtualenv", &canonical_path];
-            let package_name: &str = "virtualenv";
-            let pip_show: Option<PipShow> = pip.find_package(package_name);
-
-            let mut venv_installed: bool = false;
-
-            if let Some(pip_show) = pip_show {
-                let pip_name: Option<&str> = pip_show.get_name();
-                if let Some(pip_name) = pip_name {
-                    if pip_name == package_name {
-                        venv_installed = true;
-                    }
-                }
-            }
-
-            if !venv_installed {
-                println!("INSTALLING PACKAGE");
-                pip.install_package(package_name);
-            }
-
-            println!("CREATING VIRTUAL ENV");
-            let command: CommandE = CommandE::new();
-            let response: Option<CommandR> =
-                command.execute_command(&python_executable, &venv_args);
-            if let Some(response) = response {
-                println!("{:?}", response);
-            }
+            let venv_args: [&str; 3] = ["-m", "virtualenv", &canonical_string];
+            self.execute_virtual_env_command(&venv_args);
         }
     }
 
     pub fn create_virtual_env(&self) {
-        let pip: Pip = Pip::new(&self.environment);
-
-        let python_executable: PathBuf = self.environment.get_python_executable();
         let venv_name: String = self.get_virtual_env_name();
         let venv_args: [&str; 3] = ["-m", "virtualenv", &venv_name];
+        self.execute_virtual_env_command(&venv_args);
+    }
+
+    fn execute_virtual_env_command(&self, venv_args: &[&str]) {
+        let pip: Pip = Pip::new(&self.environment);
+        let python_executable: AbPath = self.environment.get_python_executable();
+
         let package_name: &str = "virtualenv";
         let pip_show: Option<PipShow> = pip.find_package(package_name);
 
@@ -167,9 +127,9 @@ impl VirtualEnv {
             pip.install_package(package_name);
         }
 
-        println!("CREATING VIRTUAL ENV");
-        let command: CommandE = CommandE::new();
-        let response: Option<CommandR> = command.execute_command(&python_executable, &venv_args);
+        let command: CommandExecute = CommandExecute::new();
+        let response: Option<CommandResponse> =
+            command.execute_command(&python_executable, &venv_args);
         if let Some(response) = response {
             println!("{:?}", response);
         }

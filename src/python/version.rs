@@ -22,6 +22,11 @@ impl PythonVersion {
     pub fn get_version(&self) -> (usize, usize) {
         (self.major, self.minor)
     }
+
+    pub fn get_version_string(&self) -> String {
+        let version_string: String = format!("{}.{}", self.major, self.minor);
+        version_string
+    }
 }
 
 #[derive(Debug)]

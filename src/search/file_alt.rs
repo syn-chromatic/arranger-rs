@@ -284,16 +284,14 @@ impl FileSearch {
         path: &PathBuf,
         files: &mut Vec<PathBuf>,
         search_progress: &mut SearchProgress,
-    ) -> bool {
+    ) {
         let filter_validation: bool = self.get_filter_validation(&path);
 
         search_progress.increment_search();
         if !files.contains(&path) && filter_validation {
             files.push(path.clone());
             search_progress.increment_match();
-            return true;
         }
-        false
     }
 
     fn handle_folder(
@@ -316,7 +314,6 @@ impl FileSearch {
         files: &mut Vec<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
-        let mut additional_directories: Vec<PathBuf> = Vec::new();
         for entry in entries {
             let entry_path: Option<PathBuf> = self.get_entry_path(&entry);
 
@@ -324,21 +321,11 @@ impl FileSearch {
                 search_progress.print_progress();
 
                 if path.is_file() {
-                    let result: bool = self.handle_file(&path, files, search_progress);
-                    if result {
-                        return;
-                    }
+                    self.handle_file(&path, files, search_progress);
                 } else if path.is_dir() {
-                    if !roots.contains(&path) {
-                        additional_directories.push(path.clone());
-                    }
-                    // self.handle_folder(&path, roots, files, search_progress);
+                    self.handle_folder(&path, roots, files, search_progress);
                 }
             }
-        }
-        // roots.extend(additional_directories);
-        for path in additional_directories {
-            self.search(&path, roots, files, search_progress)
         }
     }
 
