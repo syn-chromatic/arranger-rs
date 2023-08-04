@@ -12,6 +12,7 @@ use crate::python::version::PythonVersion;
 use crate::python::virtualenv::VirtualEnv;
 use crate::python::virtualenv::VirtualEnvCFG;
 use crate::search::file::FileSearch;
+use crate::FixVirtualEnvCommand;
 
 pub fn create_virtual_env(major: usize, minor: usize) {
     let data_dir: Option<PathBuf> = dirs::data_local_dir();
@@ -51,30 +52,32 @@ pub fn create_virtual_env_in_path(path: WPath, major: usize, minor: usize) {
     }
 }
 
-pub fn fix_virtual_environments() {
-    let venv_cfgs: Vec<VirtualEnvCFG> = get_virtual_env_cfgs();
+pub fn fix_virtual_environments(fix_venv_command: FixVirtualEnvCommand) {
+    let deep_search: bool = fix_venv_command.deep_search;
+    println!("Deep search: {}", deep_search);
+    let venv_cfgs: Vec<VirtualEnvCFG> = get_virtual_env_cfgs(deep_search);
     for venv_cfg in venv_cfgs {
-        let version = venv_cfg.version_info;
-        let cfg_file = venv_cfg.cfg_file;
-        let (major, minor) = version.get_2p_version();
+        let version: crate::general::version::SemanticVersion = venv_cfg.version_info;
+        let cfg_file: WPath = venv_cfg.cfg_file;
+        let (major, minor): (usize, usize) = version.get_2p_version();
         create_virtual_env_in_path(cfg_file, major, minor);
     }
 }
 
-fn find_virtual_env_config(current_dir: &PathBuf) -> HashSet<PathBuf> {
+fn find_virtual_env_config(current_dir: &PathBuf, deep_search: bool) -> HashSet<PathBuf> {
     let mut file_search: FileSearch = FileSearch::new();
 
     let root: &PathBuf = current_dir;
     let exclusive_filenames: Vec<&str> = vec!["pyvenv.cfg"];
     let exclusive_exts: Vec<&str> = vec![];
     let exclude_dirs: Vec<&str> = vec![];
-    let quit_directory_on_match: bool = true;
+    let quit_directory_on_match: bool = !deep_search;
 
     file_search.set_root(root);
     file_search.set_exclusive_filenames(exclusive_filenames);
     file_search.set_exclusive_extensions(exclusive_exts);
     file_search.set_exclude_directories(exclude_dirs);
-    // file_search.set_quit_directory_on_match(quit_directory_on_match);
+    file_search.set_quit_directory_on_match(quit_directory_on_match);
 
     let files: HashSet<PathBuf> = file_search.search_files();
     files
@@ -145,11 +148,11 @@ fn confirm_discovered_environments(cfg_files: &HashSet<PathBuf>) -> bool {
     confirm_and_continue()
 }
 
-fn get_virtual_env_cfgs() -> Vec<VirtualEnvCFG> {
+fn get_virtual_env_cfgs(deep_search: bool) -> Vec<VirtualEnvCFG> {
     let current_dir: Result<PathBuf, Error> = std::env::current_dir();
     let mut venv_cfgs: Vec<VirtualEnvCFG> = Vec::new();
     if let Ok(current_dir) = current_dir {
-        let cfg_files: HashSet<PathBuf> = find_virtual_env_config(&current_dir);
+        let cfg_files: HashSet<PathBuf> = find_virtual_env_config(&current_dir, deep_search);
         let response: bool = confirm_discovered_environments(&cfg_files);
         if !response {
             return venv_cfgs;

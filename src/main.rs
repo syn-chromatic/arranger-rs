@@ -34,14 +34,21 @@ enum PythonSubCommands {
     #[command(about = "Create Virtual Environment", name = "venv")]
     VirtualEnv(VirtualEnvCommand),
     #[command(about = "Fix Virtual Environments", name = "fix-venv")]
-    FixVirtualEnvironments,
+    FixVirtualEnvironments(FixVirtualEnvCommand),
 }
 
 #[derive(Debug, Parser)]
-struct VirtualEnvCommand {
+pub struct VirtualEnvCommand {
     /// Select Python version
     #[arg(short = 'V', long = "version")]
     version: PythonVersion,
+}
+
+#[derive(Debug, Parser)]
+pub struct FixVirtualEnvCommand {
+    /// Perform a deep search
+    #[arg(short = 'D', long = "deep-search")]
+    deep_search: bool,
 }
 
 fn main() {
@@ -53,8 +60,8 @@ fn main() {
                     let (major, minor) = venv_command.version.get_version();
                     create_virtual_env(major, minor);
                 }
-                PythonSubCommands::FixVirtualEnvironments => {
-                    fix_virtual_environments();
+                PythonSubCommands::FixVirtualEnvironments(fix_venv_command) => {
+                    fix_virtual_environments(fix_venv_command);
                 }
             },
         },
