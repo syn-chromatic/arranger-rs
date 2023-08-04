@@ -1,9 +1,10 @@
+use std::collections::HashSet;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
 use dirs;
 
-use crate::general::path::AbPath;
+use crate::general::path::WPath;
 use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
 use crate::python::python::PythonEnvironment;
@@ -17,7 +18,7 @@ pub fn create_virtual_env(major: usize, minor: usize) {
 
     if let Some(data_dir) = data_dir {
         let base_path_buf: PathBuf = data_dir.join("Programs/Python");
-        let base_path: AbPath = AbPath::from_path_buf(&base_path_buf);
+        let base_path: WPath = WPath::from_path_buf(&base_path_buf);
 
         let python_version: PythonVersion = PythonVersion::new(major, minor);
 
@@ -31,12 +32,12 @@ pub fn create_virtual_env(major: usize, minor: usize) {
     }
 }
 
-pub fn create_virtual_env_in_path(path: AbPath, major: usize, minor: usize) {
+pub fn create_virtual_env_in_path(path: WPath, major: usize, minor: usize) {
     let data_dir: Option<PathBuf> = dirs::data_local_dir();
 
     if let Some(data_dir) = data_dir {
         let base_path_buf: PathBuf = data_dir.join("Programs/Python");
-        let base_path: AbPath = AbPath::from_path_buf(&base_path_buf);
+        let base_path: WPath = WPath::from_path_buf(&base_path_buf);
 
         let python_version: PythonVersion = PythonVersion::new(major, minor);
 
@@ -60,7 +61,7 @@ pub fn fix_virtual_environments() {
     }
 }
 
-fn find_virtual_env_config(current_dir: &PathBuf) -> Vec<PathBuf> {
+fn find_virtual_env_config(current_dir: &PathBuf) -> HashSet<PathBuf> {
     let mut file_search: FileSearch = FileSearch::new();
 
     let root: &PathBuf = current_dir;
@@ -73,13 +74,13 @@ fn find_virtual_env_config(current_dir: &PathBuf) -> Vec<PathBuf> {
     file_search.set_exclusive_filenames(exclusive_filenames);
     file_search.set_exclusive_extensions(exclusive_exts);
     file_search.set_exclude_directories(exclude_dirs);
-    file_search.set_quit_directory_on_match(quit_directory_on_match);
+    // file_search.set_quit_directory_on_match(quit_directory_on_match);
 
-    let files: Vec<PathBuf> = file_search.search_files();
+    let files: HashSet<PathBuf> = file_search.search_files();
     files
 }
 
-fn find_virtual_env_activations(scripts_dir: &PathBuf) -> Vec<PathBuf> {
+fn find_virtual_env_activations(scripts_dir: &PathBuf) -> HashSet<PathBuf> {
     let mut file_search: FileSearch = FileSearch::new();
 
     let root: &PathBuf = scripts_dir;
@@ -93,7 +94,7 @@ fn find_virtual_env_activations(scripts_dir: &PathBuf) -> Vec<PathBuf> {
     file_search.set_exclusive_extensions(exclusive_exts);
     file_search.set_exclude_directories(exclude_dirs);
 
-    let files: Vec<PathBuf> = file_search.search_files();
+    let files: HashSet<PathBuf> = file_search.search_files();
 
     for file in &files {
         println!("[{:?}]", file);
@@ -130,10 +131,10 @@ fn confirm_and_continue() -> bool {
     }
 }
 
-fn confirm_discovered_environments(cfg_files: &Vec<PathBuf>) -> bool {
+fn confirm_discovered_environments(cfg_files: &HashSet<PathBuf>) -> bool {
     println!("\nFound Environments:");
     for cfg_file in cfg_files {
-        let mut environment_directory: AbPath = cfg_file.into();
+        let mut environment_directory: WPath = cfg_file.into();
         environment_directory.to_directory();
 
         let directory_string = environment_directory.get_canonical_string();
@@ -148,7 +149,7 @@ fn get_virtual_env_cfgs() -> Vec<VirtualEnvCFG> {
     let current_dir: Result<PathBuf, Error> = std::env::current_dir();
     let mut venv_cfgs: Vec<VirtualEnvCFG> = Vec::new();
     if let Ok(current_dir) = current_dir {
-        let cfg_files: Vec<PathBuf> = find_virtual_env_config(&current_dir);
+        let cfg_files: HashSet<PathBuf> = find_virtual_env_config(&current_dir);
         let response: bool = confirm_discovered_environments(&cfg_files);
         if !response {
             return venv_cfgs;
@@ -159,7 +160,7 @@ fn get_virtual_env_cfgs() -> Vec<VirtualEnvCFG> {
             let result: Result<Vec<CFGLine>, Error> = cfg_parser.from_file(&cfg_file);
 
             if let Ok(result) = result {
-                let cfg_path: AbPath = AbPath::from_path_buf(&cfg_file);
+                let cfg_path: WPath = WPath::from_path_buf(&cfg_file);
                 let venv_cfg: Option<VirtualEnvCFG> = VirtualEnvCFG::new(cfg_path, &result);
                 if let Some(venv_cfg) = venv_cfg {
                     venv_cfgs.push(venv_cfg);

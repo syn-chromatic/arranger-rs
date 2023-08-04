@@ -5,7 +5,7 @@ use std::string::FromUtf8Error;
 
 use core::fmt::{Debug, Formatter};
 
-use crate::general::path::AbPath;
+use crate::general::path::WPath;
 
 pub struct CommandResponse {
     stdout: String,
@@ -48,7 +48,7 @@ impl CommandResponse {
 }
 
 impl Debug for CommandResponse {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let separator: String = "=".repeat(30);
         let string: String = format!(
             "{}\n{}\n{}\n{}\n{}\n",
@@ -65,7 +65,7 @@ impl CommandExecute {
         CommandExecute
     }
 
-    pub fn execute_command(&self, program: &AbPath, args: &[&str]) -> Option<CommandResponse> {
+    pub fn execute_command(&self, program: &WPath, args: &[&str]) -> Option<CommandResponse> {
         let output: Result<Output, Error> = Command::new(program).args(args).output();
         if let Ok(output) = output {
             let response: Option<CommandResponse> = CommandResponse::new(output);

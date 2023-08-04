@@ -1,8 +1,6 @@
-// use std::path::PathBuf;
-
-use crate::python::python::PythonEnvironment;
+use crate::general::path::WPath;
 use crate::general::shell::{CommandExecute, CommandResponse};
-use crate::general::path::AbPath;
+use crate::python::python::PythonEnvironment;
 
 pub struct Pip {
     environment: PythonEnvironment,
@@ -15,7 +13,7 @@ impl Pip {
     }
 
     pub fn find_package(&self, package: &str) -> Option<PipShow> {
-        let python_executable: AbPath = self.environment.get_python_executable();
+        let python_executable: WPath = self.environment.get_python_executable();
         let args: [&str; 5] = ["-m", "pip", "show", package, "--disable-pip-version-check"];
         let command: CommandExecute = CommandExecute::new();
         let response: Option<CommandResponse> = command.execute_command(&python_executable, &args);
@@ -30,7 +28,7 @@ impl Pip {
     }
 
     pub fn install_package(&self, package: &str) {
-        let python_executable: AbPath = self.environment.get_python_executable();
+        let python_executable: WPath = self.environment.get_python_executable();
         let args: [&str; 5] = [
             "-m",
             "pip",
@@ -104,26 +102,18 @@ impl PipShow {
         let prefix: String = prefix.to_lowercase();
         let suffix: String = suffix.to_string();
 
-        if prefix == "name" {
-            self.name = suffix;
-        } else if prefix == "version" {
-            self.version = suffix;
-        } else if prefix == "summary" {
-            self.summary = suffix;
-        } else if prefix == "home-page" {
-            self.homepage = suffix;
-        } else if prefix == "author" {
-            self.author = suffix;
-        } else if prefix == "author-email" {
-            self.author_email = suffix;
-        } else if prefix == "license" {
-            self.license = suffix;
-        } else if prefix == "location" {
-            self.location = suffix;
-        } else if prefix == "requires" {
-            self.requires = suffix;
-        } else if prefix == "required-by" {
-            self.required_by = suffix;
+        match prefix.as_ref() {
+            "name" => self.name = suffix,
+            "version" => self.version = suffix,
+            "summary" => self.summary = suffix,
+            "home-page" => self.homepage = suffix,
+            "author" => self.author = suffix,
+            "author-email" => self.author_email = suffix,
+            "license" => self.license = suffix,
+            "location" => self.location = suffix,
+            "requires" => self.requires = suffix,
+            "required-by" => self.required_by = suffix,
+            _ => {}
         }
     }
 

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs::{DirEntry, ReadDir};
@@ -67,20 +68,20 @@ impl SearchProgress {
 
 pub struct FileSearch {
     root: Option<PathBuf>,
-    exclusive_filenames: Vec<String>,
-    exclusive_file_stems: Vec<String>,
-    exclusive_exts: Vec<String>,
-    exclude_dirs: Vec<PathBuf>,
+    exclusive_filenames: HashSet<String>,
+    exclusive_file_stems: HashSet<String>,
+    exclusive_exts: HashSet<String>,
+    exclude_dirs: HashSet<PathBuf>,
     quit_directory_on_match: bool,
 }
 
 impl FileSearch {
     pub fn new() -> Self {
         let root: Option<PathBuf> = None;
-        let exclusive_filenames: Vec<String> = vec![];
-        let exclusive_file_stems: Vec<String> = vec![];
-        let exclusive_exts: Vec<String> = vec![];
-        let exclude_dirs: Vec<PathBuf> = vec![];
+        let exclusive_filenames: HashSet<String> = HashSet::new();
+        let exclusive_file_stems: HashSet<String> = HashSet::new();
+        let exclusive_exts: HashSet<String> = HashSet::new();
+        let exclude_dirs: HashSet<PathBuf> = HashSet::new();
         let quit_directory_on_match: bool = false;
 
         FileSearch {
@@ -98,33 +99,34 @@ impl FileSearch {
     }
 
     pub fn set_exclusive_filenames(&mut self, filenames: Vec<&str>) {
-        let mut exclusive_filenames: Vec<String> = Vec::with_capacity(filenames.len());
+        let mut exclusive_filenames: HashSet<String> = HashSet::new();
         for filename in filenames {
-            exclusive_filenames.push(filename.to_string());
+            exclusive_filenames.insert(filename.to_string());
         }
         self.exclusive_filenames = exclusive_filenames;
     }
 
     pub fn set_exclusive_file_stems(&mut self, file_stems: Vec<&str>) {
-        let mut exclusive_file_stems: Vec<String> = Vec::with_capacity(file_stems.len());
+        let mut exclusive_file_stems: HashSet<String> = HashSet::new();
         for file_stem in file_stems {
-            exclusive_file_stems.push(file_stem.to_string());
+            exclusive_file_stems.insert(file_stem.to_string());
         }
         self.exclusive_file_stems = exclusive_file_stems;
     }
 
     pub fn set_exclusive_extensions(&mut self, exts: Vec<&str>) {
-        let mut exclusive_exts: Vec<String> = Vec::with_capacity(exts.len());
+        let mut exclusive_exts: HashSet<String> = HashSet::new();
         for ext in exts {
-            exclusive_exts.push(ext.to_string());
+            let ext: String = self.format_extension(ext);
+            exclusive_exts.insert(ext.to_string());
         }
         self.exclusive_exts = exclusive_exts;
     }
 
     pub fn set_exclude_directories(&mut self, dirs: Vec<&str>) {
-        let mut exclude_dirs: Vec<PathBuf> = Vec::with_capacity(dirs.len());
+        let mut exclude_dirs: HashSet<PathBuf> = HashSet::new();
         for dir in dirs {
-            exclude_dirs.push(PathBuf::from(dir));
+            exclude_dirs.insert(PathBuf::from(dir));
         }
         self.exclude_dirs = exclude_dirs;
     }
@@ -133,9 +135,9 @@ impl FileSearch {
         self.quit_directory_on_match = state;
     }
 
-    pub fn search_files(&self) -> Vec<PathBuf> {
-        let mut roots: Vec<PathBuf> = vec![];
-        let mut files: Vec<PathBuf> = vec![];
+    pub fn search_files(&self) -> HashSet<PathBuf> {
+        let mut roots: HashSet<PathBuf> = HashSet::new();
+        let mut files: HashSet<PathBuf> = HashSet::new();
         let root: PathBuf = self.get_root_path();
         self.print_search_initialize(&root);
         let mut search_progress: SearchProgress = SearchProgress::new();
@@ -157,7 +159,7 @@ impl FileSearch {
         println!("Searching in: [{}]", string);
     }
 
-    fn format_extension(&self, ext: &String) -> String {
+    fn format_extension(&self, ext: &str) -> String {
         let mut ext: String = ext.trim().to_lowercase();
         if !ext.is_empty() && !ext.starts_with('.') {
             ext.insert(0, '.');
@@ -231,10 +233,8 @@ impl FileSearch {
 
         let p_filename: &OsStr = path.file_name().unwrap_or_default();
         let p_filename: String = p_filename.to_string_lossy().to_lowercase();
-        for filename in &self.exclusive_filenames {
-            if filename == &p_filename {
-                return true;
-            }
+        if self.exclusive_filenames.contains(&p_filename) {
+            return true;
         }
         false
     }
@@ -246,10 +246,8 @@ impl FileSearch {
 
         let file_stem: &OsStr = path.file_stem().unwrap_or_default();
         let file_stem: String = file_stem.to_string_lossy().to_lowercase();
-        for file_name in &self.exclusive_file_stems {
-            if file_name == &file_stem {
-                return true;
-            }
+        if self.exclusive_file_stems.contains(&file_stem) {
+            return true;
         }
         false
     }
@@ -259,16 +257,14 @@ impl FileSearch {
             return true;
         }
 
-        for ext in &self.exclusive_exts {
-            let ext: String = self.format_extension(ext);
-            let file_ext: &OsStr = path.extension().unwrap_or_default();
-            let file_ext: String = file_ext.to_string_lossy().to_lowercase();
-            let file_ext: String = self.format_extension(&file_ext);
+        let file_ext: &OsStr = path.extension().unwrap_or_default();
+        let file_ext: String = file_ext.to_string_lossy().to_lowercase();
+        let file_ext: String = self.format_extension(&file_ext);
 
-            if file_ext == ext {
-                return true;
-            }
+        if self.exclusive_exts.contains(&file_ext) {
+            return true;
         }
+
         false
     }
 
@@ -289,41 +285,54 @@ impl FileSearch {
     fn handle_file(
         &self,
         path: &PathBuf,
-        files: &mut Vec<PathBuf>,
+        files: &mut HashSet<PathBuf>,
         search_progress: &mut SearchProgress,
     ) -> bool {
         let filter_validation: bool = self.get_filter_validation(&path);
 
         search_progress.increment_search();
-        if !files.contains(&path) && filter_validation {
-            files.push(path.clone());
+        if !files.contains(path) && filter_validation {
+            files.insert(path.clone());
             search_progress.increment_match();
             return true;
         }
         false
     }
 
-    fn handle_folder(
+    // fn handle_folder(
+    //     &self,
+    //     path: &PathBuf,
+    //     roots: &mut HashSet<PathBuf>,
+    //     files: &mut HashSet<PathBuf>,
+    //     search_progress: &mut SearchProgress,
+    // ) {
+    //     if !roots.contains(&path) {
+    //         roots.push(path.clone());
+    //         self.search(path, roots, files, search_progress);
+    //     }
+    // }
+
+    fn recurse_additional_directories(
         &self,
-        path: &PathBuf,
-        roots: &mut Vec<PathBuf>,
-        files: &mut Vec<PathBuf>,
+        additional_directories: HashSet<PathBuf>,
+        roots: &mut HashSet<PathBuf>,
+        files: &mut HashSet<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
-        if !roots.contains(&path) {
-            roots.push(path.clone());
-            self.search(path, roots, files, search_progress);
+        for path in additional_directories {
+            roots.insert(path.clone());
+            self.search(&path, roots, files, search_progress);
         }
     }
 
     fn walker(
         &self,
         entries: ReadDir,
-        roots: &mut Vec<PathBuf>,
-        files: &mut Vec<PathBuf>,
+        roots: &mut HashSet<PathBuf>,
+        files: &mut HashSet<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
-        let mut additional_directories: Vec<PathBuf> = Vec::new();
+        let mut additional_directories: HashSet<PathBuf> = HashSet::new();
 
         for entry in entries {
             let entry_path: Option<PathBuf> = self.get_entry_path(&entry);
@@ -337,24 +346,19 @@ impl FileSearch {
                         return;
                     }
                 } else if path.is_dir() {
-                    additional_directories.push(path);
+                    additional_directories.insert(path);
                 }
             }
         }
 
-        for path in additional_directories {
-            if !roots.contains(&path) {
-                roots.push(path.clone());
-                self.search(&path, roots, files, search_progress);
-            }
-        }
+        self.recurse_additional_directories(additional_directories, roots, files, search_progress);
     }
 
     fn search(
         &self,
         root: &PathBuf,
-        roots: &mut Vec<PathBuf>,
-        files: &mut Vec<PathBuf>,
+        roots: &mut HashSet<PathBuf>,
+        files: &mut HashSet<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
         let root_op: Option<PathBuf> = self.get_canonical_path(root);

@@ -19,7 +19,7 @@ impl SemanticVersion {
         }
     }
     pub fn from_string(string: &str) -> Option<Self> {
-        let parts: Split<'_, &str> = string.split(".");
+        let parts: Split<&str> = string.split(".");
         let mut major: Option<usize> = None;
         let mut minor: Option<usize> = None;
         let mut patch: Option<usize> = None;
