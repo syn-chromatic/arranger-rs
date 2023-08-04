@@ -67,11 +67,13 @@ fn find_virtual_env_config(current_dir: &PathBuf) -> Vec<PathBuf> {
     let exclusive_filenames: Vec<&str> = vec!["pyvenv.cfg"];
     let exclusive_exts: Vec<&str> = vec![];
     let exclude_dirs: Vec<&str> = vec![];
+    let quit_directory_on_match: bool = true;
 
     file_search.set_root(root);
     file_search.set_exclusive_filenames(exclusive_filenames);
     file_search.set_exclusive_extensions(exclusive_exts);
     file_search.set_exclude_directories(exclude_dirs);
+    file_search.set_quit_directory_on_match(quit_directory_on_match);
 
     let files: Vec<PathBuf> = file_search.search_files();
     files

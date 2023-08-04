@@ -71,6 +71,7 @@ pub struct FileSearch {
     exclusive_file_stems: Vec<String>,
     exclusive_exts: Vec<String>,
     exclude_dirs: Vec<PathBuf>,
+    quit_directory_on_match: bool,
 }
 
 impl FileSearch {
@@ -80,6 +81,7 @@ impl FileSearch {
         let exclusive_file_stems: Vec<String> = vec![];
         let exclusive_exts: Vec<String> = vec![];
         let exclude_dirs: Vec<PathBuf> = vec![];
+        let quit_directory_on_match: bool = false;
 
         FileSearch {
             root,
@@ -87,6 +89,7 @@ impl FileSearch {
             exclusive_file_stems,
             exclusive_exts,
             exclude_dirs,
+            quit_directory_on_match,
         }
     }
 
@@ -124,6 +127,10 @@ impl FileSearch {
             exclude_dirs.push(PathBuf::from(dir));
         }
         self.exclude_dirs = exclude_dirs;
+    }
+
+    pub fn set_quit_directory_on_match(&mut self, state: bool) {
+        self.quit_directory_on_match = state;
     }
 
     pub fn search_files(&self) -> Vec<PathBuf> {
@@ -317,6 +324,7 @@ impl FileSearch {
         search_progress: &mut SearchProgress,
     ) {
         let mut additional_directories: Vec<PathBuf> = Vec::new();
+
         for entry in entries {
             let entry_path: Option<PathBuf> = self.get_entry_path(&entry);
 
@@ -324,21 +332,21 @@ impl FileSearch {
                 search_progress.print_progress();
 
                 if path.is_file() {
-                    let result: bool = self.handle_file(&path, files, search_progress);
-                    if result {
+                    let is_match: bool = self.handle_file(&path, files, search_progress);
+                    if is_match && self.quit_directory_on_match {
                         return;
                     }
                 } else if path.is_dir() {
-                    if !roots.contains(&path) {
-                        additional_directories.push(path.clone());
-                    }
-                    // self.handle_folder(&path, roots, files, search_progress);
+                    additional_directories.push(path);
                 }
             }
         }
-        // roots.extend(additional_directories);
+
         for path in additional_directories {
-            self.search(&path, roots, files, search_progress)
+            if !roots.contains(&path) {
+                roots.push(path.clone());
+                self.search(&path, roots, files, search_progress);
+            }
         }
     }
 
