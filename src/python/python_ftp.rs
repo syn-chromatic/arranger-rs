@@ -145,6 +145,16 @@ impl PythonFTP {
             PythonFTP::Python3_6_6(url) => url,
             PythonFTP::Python3_6_7(url) => url,
             PythonFTP::Python3_6_8(url) => url,
+            PythonFTP::Python3_7_0(url) => url,
+            PythonFTP::Python3_7_1(url) => url,
+            PythonFTP::Python3_7_2(url) => url,
+            PythonFTP::Python3_7_3(url) => url,
+            PythonFTP::Python3_7_4(url) => url,
+            PythonFTP::Python3_7_5(url) => url,
+            PythonFTP::Python3_7_6(url) => url,
+            PythonFTP::Python3_7_7(url) => url,
+            PythonFTP::Python3_7_8(url) => url,
+            PythonFTP::Python3_7_9(url) => url,
         }
     }
 }
