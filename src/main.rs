@@ -8,7 +8,7 @@ use clap::error::Error as ClapError;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::python::version::PythonVersion;
-use crate::utils::{create_virtual_env, fix_virtual_environments};
+use crate::utils::{create_virtual_env, download_python, fix_virtual_environments};
 
 #[derive(Debug, Parser)]
 #[command(name = "Arranger")]
@@ -31,10 +31,19 @@ struct PythonCommand {
 
 #[derive(Debug, Subcommand)]
 enum PythonSubCommands {
+    #[command(about = "Download Python Version", name = "download")]
+    DownloadPython(DownloadPythonCommand),
     #[command(about = "Create Virtual Environment", name = "venv")]
     VirtualEnv(VirtualEnvCommand),
     #[command(about = "Fix Virtual Environments", name = "fix-venv")]
     FixVirtualEnvironments(FixVirtualEnvCommand),
+}
+
+#[derive(Debug, Parser)]
+pub struct DownloadPythonCommand {
+    /// Select Python version
+    #[arg(short = 'V', long = "version")]
+    version: PythonVersion,
 }
 
 #[derive(Debug, Parser)]
@@ -56,6 +65,10 @@ fn main() {
     match opt {
         Ok(opt) => match opt.command {
             Commands::Python(python_opt) => match python_opt.subcommands {
+                PythonSubCommands::DownloadPython(download_command) => {
+                    let version = download_command.version;
+                    download_python(version);
+                }
                 PythonSubCommands::VirtualEnv(venv_command) => {
                     let (major, minor) = venv_command.version.get_version();
                     create_virtual_env(major, minor);

@@ -3,11 +3,15 @@ use std::io::{Error, Write};
 use std::path::PathBuf;
 
 use dirs;
+use tokio::runtime::Runtime;
 
+use crate::general::http::HTTP;
 use crate::general::path::WPath;
+use crate::general::version::SemanticVersion;
 use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
 use crate::python::python::PythonEnvironment;
+use crate::python::python_ftp::PythonFTP;
 use crate::python::version::PythonVersion;
 use crate::python::virtualenv::VirtualEnv;
 use crate::python::virtualenv::VirtualEnvCFG;
@@ -21,7 +25,7 @@ pub fn create_virtual_env(major: usize, minor: usize) {
         let base_path_buf: PathBuf = data_dir.join("Programs/Python");
         let base_path: WPath = WPath::from_path_buf(&base_path_buf);
 
-        let python_version: PythonVersion = PythonVersion::new(major, minor);
+        let python_version: PythonVersion = PythonVersion::new(major, minor, 0);
 
         let environment: Option<PythonEnvironment> =
             PythonEnvironment::new(base_path, python_version);
@@ -40,7 +44,7 @@ pub fn create_virtual_env_in_path(path: WPath, major: usize, minor: usize) {
         let base_path_buf: PathBuf = data_dir.join("Programs/Python");
         let base_path: WPath = WPath::from_path_buf(&base_path_buf);
 
-        let python_version: PythonVersion = PythonVersion::new(major, minor);
+        let python_version: PythonVersion = PythonVersion::new(major, minor, 0);
 
         let environment: Option<PythonEnvironment> =
             PythonEnvironment::new(base_path, python_version);
@@ -61,6 +65,19 @@ pub fn fix_virtual_environments(fix_venv_command: FixVirtualEnvCommand) {
         let cfg_file: WPath = venv_cfg.cfg_file;
         let (major, minor): (usize, usize) = version.get_2p_version();
         create_virtual_env_in_path(cfg_file, major, minor);
+    }
+}
+
+pub fn download_python(version: PythonVersion) {
+    let version_tuple: (usize, usize, usize) = version.get_3p_version();
+    let python_ftp: Option<PythonFTP> = PythonFTP::from_tuple(version_tuple);
+
+    if let Some(python_ftp) = python_ftp {
+        let url: &str = python_ftp.get_url();
+        let rt: Runtime = Runtime::new().unwrap();
+        let http: HTTP = HTTP::new();
+        let result = rt.block_on(http.download_file(url));
+        println!("Result: {:?}", result.unwrap());
     }
 }
 

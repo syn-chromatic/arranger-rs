@@ -7,11 +7,16 @@ use std::str::FromStr;
 pub struct PythonVersion {
     major: usize,
     minor: usize,
+    patch: usize,
 }
 
 impl PythonVersion {
-    pub fn new(major: usize, minor: usize) -> Self {
-        PythonVersion { major, minor }
+    pub fn new(major: usize, minor: usize, patch: usize) -> Self {
+        PythonVersion {
+            major,
+            minor,
+            patch,
+        }
     }
 
     pub fn get_folder_name(&self) -> String {
@@ -21,6 +26,10 @@ impl PythonVersion {
 
     pub fn get_version(&self) -> (usize, usize) {
         (self.major, self.minor)
+    }
+
+    pub fn get_3p_version(&self) -> (usize, usize, usize) {
+        (self.major, self.minor, self.patch)
     }
 
     pub fn get_version_string(&self) -> String {
@@ -52,18 +61,35 @@ impl Error for ParseVersionError {
         }
     }
 }
-
 impl FromStr for PythonVersion {
     type Err = ParseVersionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts: Vec<&str> = s.split('.').collect();
         parts.retain(|&s| !s.is_empty());
-        if parts.len() != 2 {
-            return Err(ParseVersionError::WrongFormat);
-        }
-        let major: usize = parts[0].parse().map_err(ParseVersionError::ParseError)?;
-        let minor: usize = parts[1].parse().map_err(ParseVersionError::ParseError)?;
-        Ok(PythonVersion { major, minor })
+
+        let major: usize = parts
+            .get(0)
+            .ok_or(ParseVersionError::WrongFormat)?
+            .parse()
+            .map_err(ParseVersionError::ParseError)?;
+
+        let minor: usize = parts
+            .get(1)
+            .ok_or(ParseVersionError::WrongFormat)?
+            .parse()
+            .map_err(ParseVersionError::ParseError)?;
+
+        let patch: usize = parts
+            .get(2)
+            .unwrap_or(&"0")
+            .parse()
+            .map_err(ParseVersionError::ParseError)?;
+
+        Ok(PythonVersion {
+            major,
+            minor,
+            patch,
+        })
     }
 }

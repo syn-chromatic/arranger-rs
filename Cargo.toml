@@ -9,3 +9,6 @@ edition = "2021"
 regex = "1"
 dirs = "5.0"
 clap = { version = "4.3.16", features = ["derive"] }
+reqwest = "0.11"
+tokio = { version = "1", features = ["full"] }
+ftp = "3.0.1"

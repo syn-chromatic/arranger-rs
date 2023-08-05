@@ -1,5 +1,5 @@
-use crate::python::version::PythonVersion;
 use crate::general::path::WPath;
+use crate::python::version::PythonVersion;
 
 #[derive(Clone)]
 pub struct PythonEnvironment {
