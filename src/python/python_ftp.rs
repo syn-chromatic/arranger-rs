@@ -1,5 +1,7 @@
-use scraper::{Html, Selector};
+use core::fmt::Debug;
 use std::collections::HashSet;
+
+use scraper::{Html, Selector};
 
 use crate::general::version::SemanticVersion;
 use crate::python::version::PythonVersion;
@@ -177,11 +179,11 @@ impl PythonFTPRetriever {
         for link in structure {
             match link {
                 LinkType::File(file) => {
-                    let filename = PythonFilename::new(file);
+                    let filename: Option<PythonFilename> = PythonFilename::new(file);
                     if let Some(filename) = filename {
-                        if filename
-                            .match_requirements("python", "amd64", "standard", "windows", "exe")
-                        {
+                        let requirement: bool = filename
+                            .match_requirements("python", "amd64", "standard", "windows", "exe");
+                        if requirement {
                             return Some(file.to_string());
                         }
                     }
@@ -193,7 +195,6 @@ impl PythonFTPRetriever {
     }
 }
 
-#[derive(Debug)]
 pub struct PythonFilename {
     name: String,
     version: SemanticVersion,
@@ -206,57 +207,31 @@ pub struct PythonFilename {
 impl PythonFilename {
     pub fn new(filename: &str) -> Option<Self> {
         let parts: Vec<&str> = filename.rsplitn(2, '.').collect();
-        let (main_part, extension) = (parts[1], parts[0]);
+        if parts.len() == 2 {
+            let (main_part, extension) = (parts[1], parts[0]);
 
-        if Self::is_valid_extension(extension) {
-            let mut name: Option<String> = None;
-            let mut version: Option<SemanticVersion> = None;
-            let mut architecture: Option<String> = None;
-            let mut package_type: String = "standard".to_string();
-            let mut platform: Option<String> = None;
+            if Self::is_valid_extension(extension) {
+                let (name, version, architecture, package_type, platform): (
+                    Option<String>,
+                    Option<SemanticVersion>,
+                    Option<String>,
+                    String,
+                    Option<String>,
+                ) = Self::get_components(main_part, extension);
 
-            let split: Vec<&str> = main_part.split('-').collect();
-
-            for segment in split {
-                let segment: String = segment.to_string();
-                let is_name: bool = Self::is_name(&segment);
-                let is_version: Option<SemanticVersion> = Self::is_version(&segment);
-                let is_architecture: bool = Self::is_architecture(&segment);
-                let is_package_type: bool = Self::is_package_type(&segment);
-                let is_platform: Option<String> = Self::is_platform(&segment, extension);
-
-                if is_name {
-                    let segment: String = segment.clone();
-                    name = Some(segment);
+                if let (Some(name), Some(version), Some(architecture), Some(platform)) =
+                    (name, version, architecture, platform)
+                {
+                    let extension: String = extension.to_string();
+                    return Some(PythonFilename {
+                        name,
+                        version,
+                        architecture,
+                        package_type,
+                        platform,
+                        extension,
+                    });
                 }
-                if is_version.is_some() {
-                    version = Some(is_version.unwrap());
-                }
-                if is_architecture {
-                    let segment: String = segment.clone();
-                    architecture = Some(segment);
-                }
-                if is_package_type {
-                    let segment: String = segment.clone();
-                    package_type = segment;
-                }
-                if is_platform.is_some() {
-                    platform = Some(is_platform.unwrap());
-                }
-            }
-
-            if let (Some(name), Some(version), Some(architecture), Some(platform)) =
-                (name, version, architecture, platform)
-            {
-                let extension: String = extension.to_string();
-                return Some(PythonFilename {
-                    name,
-                    version,
-                    architecture,
-                    package_type,
-                    platform,
-                    extension,
-                });
             }
         }
         None
@@ -328,5 +303,66 @@ impl PythonFilename {
             "pkg" => true,
             _ => false,
         }
+    }
+
+    fn get_components(
+        main_part: &str,
+        extension: &str,
+    ) -> (
+        Option<String>,
+        Option<SemanticVersion>,
+        Option<String>,
+        String,
+        Option<String>,
+    ) {
+        let mut name: Option<String> = None;
+        let mut version: Option<SemanticVersion> = None;
+        let mut architecture: Option<String> = None;
+        let mut package_type: String = "standard".to_string();
+        let mut platform: Option<String> = None;
+
+        let split: Vec<&str> = main_part.split('-').collect();
+
+        for segment in split {
+            let segment: String = segment.to_string();
+            let is_name: bool = Self::is_name(&segment);
+            let is_version: Option<SemanticVersion> = Self::is_version(&segment);
+            let is_architecture: bool = Self::is_architecture(&segment);
+            let is_package_type: bool = Self::is_package_type(&segment);
+            let is_platform: Option<String> = Self::is_platform(&segment, extension);
+
+            if is_name {
+                let segment: String = segment.clone();
+                name = Some(segment);
+            }
+            if is_version.is_some() {
+                version = Some(is_version.unwrap());
+            }
+            if is_architecture {
+                let segment: String = segment.clone();
+                architecture = Some(segment);
+            }
+            if is_package_type {
+                let segment: String = segment.clone();
+                package_type = segment;
+            }
+            if is_platform.is_some() {
+                platform = Some(is_platform.unwrap());
+            }
+        }
+        (name, version, architecture, package_type, platform)
+    }
+}
+
+impl Debug for PythonFilename {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PythonFilename")
+            .field("name", &self.name)
+            .field("version", &self.version)
+            .field("architecture", &self.architecture)
+            .field("package_type", &self.package_type)
+            .field("platform", &self.platform)
+            .field("extension", &self.extension)
+            .finish()
     }
 }

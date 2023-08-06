@@ -74,7 +74,7 @@ fn main() {
         Ok(opt) => match opt.command {
             Commands::Python(python_opt) => match python_opt.subcommands {
                 PythonSubCommands::DownloadPython(download_command) => {
-                    let version = download_command.version;
+                    let version: PythonVersion = download_command.version;
                     download_python(version);
                 }
                 PythonSubCommands::VirtualEnv(venv_command) => {

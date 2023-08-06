@@ -65,6 +65,7 @@ impl FromStr for PythonVersion {
     type Err = ParseVersionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s: &str = s.trim();
         let mut parts: Vec<&str> = s.split('.').collect();
         parts.retain(|&s| !s.is_empty());
 
