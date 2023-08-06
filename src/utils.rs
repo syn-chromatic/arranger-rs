@@ -7,11 +7,10 @@ use tokio::runtime::Runtime;
 
 use crate::general::http::HTTP;
 use crate::general::path::WPath;
-use crate::general::version::SemanticVersion;
 use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
 use crate::python::python::PythonEnvironment;
-use crate::python::python_ftp::PythonFTP;
+use crate::python::python_ftp::PythonFTPRetriever;
 use crate::python::version::PythonVersion;
 use crate::python::virtualenv::VirtualEnv;
 use crate::python::virtualenv::VirtualEnvCFG;
@@ -69,16 +68,20 @@ pub fn fix_virtual_environments(fix_venv_command: FixVirtualEnvCommand) {
 }
 
 pub fn download_python(version: PythonVersion) {
-    let version_tuple: (usize, usize, usize) = version.get_3p_version();
-    let python_ftp: Option<PythonFTP> = PythonFTP::from_tuple(version_tuple);
-
-    if let Some(python_ftp) = python_ftp {
-        let url: &str = python_ftp.get_url();
+    let rn: Runtime = Runtime::new().unwrap();
+    let ftp_retriever: PythonFTPRetriever = PythonFTPRetriever::new();
+    let result: Option<String> = rn.block_on(ftp_retriever.get_windows_amd64_install(&version));
+    if let Some(url) = result {
+        println!("Found version: {}", url);
         let rt: Runtime = Runtime::new().unwrap();
         let http: HTTP = HTTP::new();
-        let result = rt.block_on(http.download_file(url));
-        println!("Result: {:?}", result.unwrap());
+        let result = rt.block_on(http.download_file(&url));
+        if result.is_err() {
+            println!("Error: {}", result.unwrap_err());
+        }
+        return;
     }
+    println!("Python version not found.");
 }
 
 fn find_virtual_env_config(current_dir: &PathBuf, deep_search: bool) -> HashSet<PathBuf> {

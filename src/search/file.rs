@@ -299,19 +299,6 @@ impl FileSearch {
         false
     }
 
-    // fn handle_folder(
-    //     &self,
-    //     path: &PathBuf,
-    //     roots: &mut HashSet<PathBuf>,
-    //     files: &mut HashSet<PathBuf>,
-    //     search_progress: &mut SearchProgress,
-    // ) {
-    //     if !roots.contains(&path) {
-    //         roots.push(path.clone());
-    //         self.search(path, roots, files, search_progress);
-    //     }
-    // }
-
     fn recurse_additional_directories(
         &self,
         additional_directories: HashSet<PathBuf>,

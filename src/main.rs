@@ -7,6 +7,14 @@ mod utils;
 use clap::error::Error as ClapError;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+use reqwest;
+use scraper::{Html, Selector};
+use std::collections::HashSet;
+use tokio::runtime::Runtime;
+
+use crate::general::path::WPath;
+use crate::general::version::SemanticVersion;
+use crate::python::python_ftp::{FileStructure, LinkType};
 use crate::python::version::PythonVersion;
 use crate::utils::{create_virtual_env, download_python, fix_virtual_environments};
 

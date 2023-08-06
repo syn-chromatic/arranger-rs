@@ -40,6 +40,14 @@ impl WPath {
         self.path.exists()
     }
 
+    pub fn is_file(&self) -> bool {
+        self.path.is_file()
+    }
+
+    pub fn is_dir(&self) -> bool {
+        self.path.is_dir()
+    }
+
     pub fn to_canonical(&mut self) -> Option<Error> {
         let canonical_path: Result<PathBuf, Error> = self.path.canonicalize();
         if let Ok(canonical_path) = canonical_path {
