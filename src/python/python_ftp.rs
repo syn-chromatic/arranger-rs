@@ -181,14 +181,16 @@ impl PythonFTPRetriever {
                 LinkType::File(file) => {
                     let filename: Option<PythonFilename> = PythonFilename::new(file);
                     if let Some(filename) = filename {
-                        let requirement: bool = filename
+                        let exe_req: bool = filename
                             .match_requirements("python", "amd64", "standard", "windows", "exe");
-                        if requirement {
+                        let msi_req: bool = filename
+                            .match_requirements("python", "amd64", "standard", "windows", "msi");
+                        if exe_req || msi_req {
                             return Some(file.to_string());
                         }
                     }
                 }
-                LinkType::Directory(dir) => {}
+                LinkType::Directory(_) => {}
             }
         }
         None
@@ -207,6 +209,7 @@ pub struct PythonFilename {
 impl PythonFilename {
     pub fn new(filename: &str) -> Option<Self> {
         let parts: Vec<&str> = filename.rsplitn(2, '.').collect();
+
         if parts.len() == 2 {
             let (main_part, extension) = (parts[1], parts[0]);
 
@@ -285,7 +288,7 @@ impl PythonFilename {
     }
 
     fn is_platform(segment: &str, extension: &str) -> Option<String> {
-        if extension == "exe" || extension == "win32" {
+        if extension == "exe" || extension == "msi" || extension == "win32" {
             return Some("windows".to_string());
         }
 
@@ -301,6 +304,7 @@ impl PythonFilename {
             "exe" => true,
             "zip" => true,
             "pkg" => true,
+            "msi" => true,
             _ => false,
         }
     }
@@ -321,7 +325,8 @@ impl PythonFilename {
         let mut package_type: String = "standard".to_string();
         let mut platform: Option<String> = None;
 
-        let split: Vec<&str> = main_part.split('-').collect();
+        let mut split: Vec<String> = main_part.split('-').map(|s| s.to_string()).collect();
+        Self::process_second_part(&mut split);
 
         for segment in split {
             let segment: String = segment.to_string();
@@ -350,7 +355,47 @@ impl PythonFilename {
                 platform = Some(is_platform.unwrap());
             }
         }
+
         (name, version, architecture, package_type, platform)
+    }
+
+    fn process_second_part(split: &mut Vec<String>) {
+        let second_part: &String = &split[1];
+        let mut version_part: Vec<char> = Vec::new();
+        let mut version_segments: usize = 0;
+        let mut p_numeric: bool = false;
+        let mut p_separate: bool = false;
+        let mut split_idx: usize = 0;
+
+        for (idx, character) in second_part.chars().enumerate() {
+            if character.is_numeric() {
+                version_part.push(character);
+                p_numeric = true;
+                p_separate = false;
+            } else if character == '.' && version_segments == 2 && p_numeric {
+                split_idx = idx;
+                break;
+            } else if !p_numeric && !p_separate {
+                version_part.clear();
+                break;
+            } else if character == '.' && p_numeric {
+                version_part.push(character);
+                p_numeric = false;
+                p_separate = true;
+                version_segments += 1;
+            } else {
+                p_numeric = false;
+                p_separate = false;
+            }
+        }
+
+        if !version_part.is_empty() && version_part.len() != second_part.len() {
+            let remaining_part: String = second_part.split_at(split_idx + 1).1.to_string();
+            let version_string: String = version_part.into_iter().collect();
+            split.remove(1);
+            split.insert(1, version_string);
+            split.insert(2, remaining_part);
+        }
     }
 }
 
