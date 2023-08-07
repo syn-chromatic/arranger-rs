@@ -1,5 +1,6 @@
 use core::fmt::Debug;
 use std::collections::HashSet;
+use std::error::Error;
 
 use scraper::{Html, Selector};
 
@@ -56,9 +57,10 @@ pub struct FileStructure {
 
 impl FileStructure {
     pub async fn new(url: &str) -> Option<Self> {
-        let structure = Self::build_file_structure(url).await;
+        let structure: Result<HashSet<LinkType>, Box<dyn Error>> =
+            Self::build_file_structure(url).await;
         if let Ok(structure) = structure {
-            let url = url.to_string();
+            let url: String = url.to_string();
             let file_structure: FileStructure = FileStructure { url, structure };
             return Some(file_structure);
         }
@@ -258,7 +260,6 @@ impl PythonFilename {
         let parts: Vec<&str> = filename.rsplitn(2, '.').collect();
 
         if parts.len() == 2 {
-            // println!("Filename: {}", filename);
             let (main_part, extension) = (parts[1], parts[0]);
 
             if Self::is_valid_extension(extension) {
@@ -269,11 +270,6 @@ impl PythonFilename {
                     String,
                     Option<String>,
                 ) = Self::get_components(main_part, extension);
-
-                // println!(
-                //     "Name: {:?} | Arch: {} | Type: {} | Platform: {:?}",
-                //     name, architecture, package_type, platform
-                // );
 
                 if let (Some(name), Some(version), Some(platform)) = (name, version, platform) {
                     let extension: String = extension.to_string();
