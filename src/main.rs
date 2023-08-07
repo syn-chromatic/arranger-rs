@@ -7,14 +7,6 @@ mod utils;
 use clap::error::Error as ClapError;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use reqwest;
-use scraper::{Html, Selector};
-use std::collections::HashSet;
-use tokio::runtime::Runtime;
-
-use crate::general::path::WPath;
-use crate::general::version::SemanticVersion;
-use crate::python::python_ftp::{FileStructure, LinkType};
 use crate::python::version::PythonVersion;
 use crate::utils::{create_virtual_env, download_python, fix_virtual_environments};
 
@@ -53,9 +45,21 @@ pub struct DownloadPythonCommand {
     #[arg(short = 'V', long = "version")]
     version: PythonVersion,
 
-    // List File Structure
+    /// List Version Files
     #[arg(short = 'L', long = "list", default_value = "false")]
     list_structure: bool,
+
+    /// Specify Architecture For Search: [amd64, arm64, n/a]
+    #[arg(short = 'A', long = "arch", default_value = "amd64")]
+    architecture: String,
+
+    /// Specify Platform For Search: [windows, macos]
+    #[arg(short = 'P', long = "platform", default_value = "windows")]
+    platform: String,
+
+    /// Specify Package Type For Search: [standard, webinstall, embed]
+    #[arg(short = 'T', long = "package-type", default_value = "standard")]
+    package_type: String,
 }
 
 #[derive(Debug, Parser)]
@@ -80,7 +84,10 @@ fn main() {
                 PythonSubCommands::DownloadPython(download_command) => {
                     let version: PythonVersion = download_command.version;
                     let list_structure: bool = download_command.list_structure;
-                    download_python(version, list_structure);
+                    let arch = download_command.architecture;
+                    let platform = download_command.platform;
+                    let package_type = download_command.package_type;
+                    download_python(version, list_structure, &arch, &platform, &package_type);
                 }
                 PythonSubCommands::VirtualEnv(venv_command) => {
                     let (major, minor) = venv_command.version.get_version();

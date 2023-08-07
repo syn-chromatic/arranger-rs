@@ -150,7 +150,13 @@ impl PythonFTPRetriever {
         PythonFTPRetriever { ftp_url }
     }
 
-    pub async fn get_windows_amd64_install(&self, version: &PythonVersion) -> Option<String> {
+    pub async fn get_install_file(
+        &self,
+        version: &PythonVersion,
+        arch: &str,
+        platform: &str,
+        package_type: &str,
+    ) -> Option<String> {
         let version_directory: String = self.get_version_directory(version);
         let file_structure: Option<FileStructure> = FileStructure::new(&self.ftp_url).await;
 
@@ -159,7 +165,8 @@ impl PythonFTPRetriever {
             if result {
                 let structure: HashSet<LinkType> = file_structure.get_structure();
 
-                let windows_link: Option<String> = self.find_windows_amd64_install(&structure);
+                let windows_link: Option<String> =
+                    self.find_install_file(&structure, arch, platform, package_type);
                 if let Some(windows_link) = windows_link {
                     let url: String = format!("{}{}", file_structure.url, windows_link);
                     return Some(url);
@@ -176,7 +183,6 @@ impl PythonFTPRetriever {
         if let Some(mut file_structure) = file_structure {
             let result: bool = file_structure.access_directory(&version_directory).await;
             if result {
-                println!("Files:");
                 let structure: HashSet<LinkType> = file_structure.get_structure();
                 for link in structure {
                     match link {
@@ -208,17 +214,26 @@ impl PythonFTPRetriever {
         version_directory
     }
 
-    fn find_windows_amd64_install(&self, structure: &HashSet<LinkType>) -> Option<String> {
+    fn find_install_file(
+        &self,
+        structure: &HashSet<LinkType>,
+        arch: &str,
+        platform: &str,
+        package_type: &str,
+    ) -> Option<String> {
         for link in structure {
             match link {
                 LinkType::File(file) => {
                     let filename: Option<PythonFilename> = PythonFilename::new(file);
                     if let Some(filename) = filename {
-                        let exe_req: bool = filename
-                            .match_requirements("python", "amd64", "standard", "windows", "exe");
-                        let msi_req: bool = filename
-                            .match_requirements("python", "amd64", "standard", "windows", "msi");
-                        if exe_req || msi_req {
+                        let requirement: bool = filename.match_requirements(
+                            "python",
+                            arch,
+                            package_type,
+                            platform,
+                            &["exe", "msi", "pkg"],
+                        );
+                        if requirement {
                             return Some(file.to_string());
                         }
                     }
@@ -250,14 +265,12 @@ impl PythonFilename {
                 let (name, version, architecture, package_type, platform): (
                     Option<String>,
                     Option<SemanticVersion>,
-                    Option<String>,
+                    String,
                     String,
                     Option<String>,
                 ) = Self::get_components(main_part, extension);
 
-                if let (Some(name), Some(version), Some(architecture), Some(platform)) =
-                    (name, version, architecture, platform)
-                {
+                if let (Some(name), Some(version), Some(platform)) = (name, version, platform) {
                     let extension: String = extension.to_string();
                     return Some(PythonFilename {
                         name,
@@ -279,13 +292,13 @@ impl PythonFilename {
         architecture: &str,
         package_type: &str,
         platform: &str,
-        extension: &str,
+        extension: &[&str],
     ) -> bool {
         if self.name == name
             && self.architecture == architecture
             && self.platform == platform
             && self.package_type == package_type
-            && self.extension == extension
+            && extension.contains(&self.extension.as_ref())
         {
             return true;
         }
@@ -325,7 +338,7 @@ impl PythonFilename {
             return Some("windows".to_string());
         }
 
-        if segment == "macos" {
+        if segment == "macos11" {
             return Some("macos".to_string());
         }
 
@@ -348,13 +361,13 @@ impl PythonFilename {
     ) -> (
         Option<String>,
         Option<SemanticVersion>,
-        Option<String>,
+        String,
         String,
         Option<String>,
     ) {
         let mut name: Option<String> = None;
         let mut version: Option<SemanticVersion> = None;
-        let mut architecture: Option<String> = None;
+        let mut architecture: String = "n/a".to_string();
         let mut package_type: String = "standard".to_string();
         let mut platform: Option<String> = None;
 
@@ -378,7 +391,7 @@ impl PythonFilename {
             }
             if is_architecture {
                 let segment: String = segment.clone();
-                architecture = Some(segment);
+                architecture = segment;
             }
             if is_package_type {
                 let segment: String = segment.clone();
@@ -407,11 +420,7 @@ impl PythonFilename {
                 p_numeric = true;
                 p_separate = false;
                 filled_segment = true;
-            } else if !character.is_numeric()
-                && version_segments == 2
-                && p_numeric
-                && filled_segment
-            {
+            } else if character == '.' && version_segments == 2 && p_numeric && filled_segment {
                 split_idx = idx;
                 break;
             } else if (!p_numeric && !p_separate) || (idx == second_part.len() - 1) {
