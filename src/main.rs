@@ -84,13 +84,13 @@ fn main() {
                 PythonSubCommands::DownloadPython(download_command) => {
                     let version: SemanticVersion = download_command.version;
                     let list_structure: bool = download_command.list_structure;
-                    let arch = download_command.architecture;
-                    let platform = download_command.platform;
-                    let package_type = download_command.package_type;
+                    let arch: String = download_command.architecture;
+                    let platform: String = download_command.platform;
+                    let package_type: String = download_command.package_type;
                     download_python(version, list_structure, &arch, &platform, &package_type);
                 }
                 PythonSubCommands::VirtualEnv(venv_command) => {
-                    let (major, minor) = venv_command.version.get_2p_version();
+                    let (major, minor): (usize, usize) = venv_command.version.get_2p_version();
                     create_virtual_env(major, minor);
                 }
                 PythonSubCommands::FixVirtualEnvironments(fix_venv_command) => {

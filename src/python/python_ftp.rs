@@ -230,7 +230,7 @@ impl PythonFTPRetriever {
                             arch,
                             package_type,
                             platform,
-                            &["exe", "msi", "pkg"],
+                            &["exe", "msi", "pkg", "dmg", "tgz"],
                         );
                         if requirement {
                             return Some(file.to_string());
@@ -258,6 +258,7 @@ impl PythonFilename {
         let parts: Vec<&str> = filename.rsplitn(2, '.').collect();
 
         if parts.len() == 2 {
+            // println!("Filename: {}", filename);
             let (main_part, extension) = (parts[1], parts[0]);
 
             if Self::is_valid_extension(extension) {
@@ -268,6 +269,11 @@ impl PythonFilename {
                     String,
                     Option<String>,
                 ) = Self::get_components(main_part, extension);
+
+                // println!(
+                //     "Name: {:?} | Arch: {} | Type: {} | Platform: {:?}",
+                //     name, architecture, package_type, platform
+                // );
 
                 if let (Some(name), Some(version), Some(platform)) = (name, version, platform) {
                     let extension: String = extension.to_string();
@@ -334,23 +340,28 @@ impl PythonFilename {
     }
 
     fn is_platform(segment: &str, extension: &str) -> Option<String> {
-        if extension == "exe" || extension == "msi" || extension == "win32" {
+        if ["exe", "msi"].contains(&extension) || segment == "win32" {
             return Some("windows".to_string());
         }
 
-        if segment == "macos11" || segment == "macosx10.9" {
+        if ["macos11", "macosx10.9"].contains(&segment) || ["pkg", "dmg"].contains(&extension) {
             return Some("macos".to_string());
         }
 
+        if extension == "tgz" {
+            return Some("linux".to_string());
+        }
         None
     }
 
     fn is_valid_extension(extension: &str) -> bool {
         match extension {
+            "msi" => true,
             "exe" => true,
             "zip" => true,
             "pkg" => true,
-            "msi" => true,
+            "dmg" => true,
+            "tgz" => true,
             _ => false,
         }
     }
@@ -375,7 +386,7 @@ impl PythonFilename {
         Self::process_split(&mut split);
 
         for segment in split {
-            let segment: String = segment.to_string();
+            let segment: String = segment.to_lowercase();
             let is_name: bool = Self::is_name(&segment);
             let is_version: Option<SemanticVersion> = Self::is_version(&segment);
             let is_architecture: bool = Self::is_architecture(&segment);
