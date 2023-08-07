@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use scraper::{Html, Selector};
 
 use crate::general::version::SemanticVersion;
-use crate::python::version::PythonVersion;
 
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub enum LinkType {
@@ -152,7 +151,7 @@ impl PythonFTPRetriever {
 
     pub async fn get_install_file(
         &self,
-        version: &PythonVersion,
+        version: &SemanticVersion,
         arch: &str,
         platform: &str,
         package_type: &str,
@@ -176,7 +175,7 @@ impl PythonFTPRetriever {
         None
     }
 
-    pub async fn list_file_structure(&self, version: &PythonVersion) {
+    pub async fn list_file_structure(&self, version: &SemanticVersion) {
         let version_directory: String = self.get_version_directory(version);
         let file_structure: Option<FileStructure> = FileStructure::new(&self.ftp_url).await;
 
@@ -208,7 +207,7 @@ impl PythonFTPRetriever {
         }
     }
 
-    fn get_version_directory(&self, version: &PythonVersion) -> String {
+    fn get_version_directory(&self, version: &SemanticVersion) -> String {
         let (major, minor, patch): (usize, usize, usize) = version.get_3p_version();
         let version_directory: String = format!("{}.{}.{}/", major, minor, patch);
         version_directory
@@ -321,6 +320,7 @@ impl PythonFilename {
         match segment {
             "amd64" => return true,
             "arm64" => return true,
+            "ia64" => return true,
             _ => return false,
         }
     }
@@ -338,7 +338,7 @@ impl PythonFilename {
             return Some("windows".to_string());
         }
 
-        if segment == "macos11" {
+        if segment == "macos11" || segment == "macosx10.9" {
             return Some("macos".to_string());
         }
 
@@ -372,7 +372,7 @@ impl PythonFilename {
         let mut platform: Option<String> = None;
 
         let mut split: Vec<String> = main_part.split('-').map(|s| s.to_string()).collect();
-        Self::process_second_part(&mut split);
+        Self::process_split(&mut split);
 
         for segment in split {
             let segment: String = segment.to_string();
@@ -405,7 +405,7 @@ impl PythonFilename {
         (name, version, architecture, package_type, platform)
     }
 
-    fn process_second_part(split: &mut Vec<String>) {
+    fn process_split(split: &mut Vec<String>) {
         let second_part: &String = &split[1];
         let mut version_part: Vec<char> = Vec::new();
         let mut version_segments: usize = 0;
@@ -420,6 +420,14 @@ impl PythonFilename {
                 p_numeric = true;
                 p_separate = false;
                 filled_segment = true;
+            } else if ['a', 'b', 'c'].contains(&character)
+                && !(idx == second_part.len() - 1)
+                && filled_segment
+            {
+                version_part.push(character);
+                p_numeric = false;
+                p_separate = false;
+                filled_segment = false;
             } else if character == '.' && version_segments == 2 && p_numeric && filled_segment {
                 split_idx = idx;
                 break;
@@ -437,7 +445,6 @@ impl PythonFilename {
                 p_separate = false;
             }
         }
-
         if !version_part.is_empty() {
             let remaining_part: String = second_part.split_at(split_idx + 1).1.to_string();
             let version_string: String = version_part.into_iter().collect();

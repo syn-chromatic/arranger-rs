@@ -7,7 +7,7 @@ mod utils;
 use clap::error::Error as ClapError;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use crate::python::version::PythonVersion;
+use crate::general::version::SemanticVersion;
 use crate::utils::{create_virtual_env, download_python, fix_virtual_environments};
 
 #[derive(Debug, Parser)]
@@ -43,7 +43,7 @@ enum PythonSubCommands {
 pub struct DownloadPythonCommand {
     /// Select Python version
     #[arg(short = 'V', long = "version")]
-    version: PythonVersion,
+    version: SemanticVersion,
 
     /// List Version Files
     #[arg(short = 'L', long = "list", default_value = "false")]
@@ -66,7 +66,7 @@ pub struct DownloadPythonCommand {
 pub struct VirtualEnvCommand {
     /// Select Python version
     #[arg(short = 'V', long = "version")]
-    version: PythonVersion,
+    version: SemanticVersion,
 }
 
 #[derive(Debug, Parser)]
@@ -82,7 +82,7 @@ fn main() {
         Ok(opt) => match opt.command {
             Commands::Python(python_opt) => match python_opt.subcommands {
                 PythonSubCommands::DownloadPython(download_command) => {
-                    let version: PythonVersion = download_command.version;
+                    let version: SemanticVersion = download_command.version;
                     let list_structure: bool = download_command.list_structure;
                     let arch = download_command.architecture;
                     let platform = download_command.platform;
@@ -90,7 +90,7 @@ fn main() {
                     download_python(version, list_structure, &arch, &platform, &package_type);
                 }
                 PythonSubCommands::VirtualEnv(venv_command) => {
-                    let (major, minor) = venv_command.version.get_version();
+                    let (major, minor) = venv_command.version.get_2p_version();
                     create_virtual_env(major, minor);
                 }
                 PythonSubCommands::FixVirtualEnvironments(fix_venv_command) => {

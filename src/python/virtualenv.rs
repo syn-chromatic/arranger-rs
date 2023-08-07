@@ -87,10 +87,10 @@ impl VirtualEnv {
         let canonical_string: Option<String> = path.get_canonical_string();
 
         if let Some(canonical_string) = canonical_string {
-            let python_version: String = self.environment.version.get_version_string();
+            let version_string: String = self.environment.version.get_2p_string();
             println!(
                 "\nCreating Virtual Environment for Python {} in: {}",
-                python_version, canonical_string
+                version_string, canonical_string
             );
 
             let venv_args: [&str; 3] = ["-m", "virtualenv", &canonical_string];
@@ -136,7 +136,7 @@ impl VirtualEnv {
     }
 
     fn get_virtual_env_name(&self) -> String {
-        let (major, minor) = self.environment.version.get_version();
+        let (major, minor) = self.environment.version.get_2p_version();
 
         let name: String = format!("pyenv{}{}", major, minor);
         name

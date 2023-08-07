@@ -1,14 +1,14 @@
 use crate::general::path::WPath;
-use crate::python::version::PythonVersion;
+use crate::general::version::SemanticVersion;
 
 #[derive(Clone)]
 pub struct PythonEnvironment {
-    pub version: PythonVersion,
+    pub version: SemanticVersion,
     python_path: WPath,
 }
 
 impl PythonEnvironment {
-    pub fn new(base_path: WPath, version: PythonVersion) -> Option<Self> {
+    pub fn new(base_path: WPath, version: SemanticVersion) -> Option<Self> {
         let python_path: Option<WPath> = Self::get_python_path(&base_path, &version);
 
         if let Some(python_path) = python_path {
@@ -26,8 +26,8 @@ impl PythonEnvironment {
         python_executable
     }
 
-    fn get_python_path(base_path: &WPath, version: &PythonVersion) -> Option<WPath> {
-        let folder_name: String = version.get_folder_name();
+    fn get_python_path(base_path: &WPath, version: &SemanticVersion) -> Option<WPath> {
+        let folder_name: String = format!("Python{}{}\\", version.major, version.minor);
         let folder_path: &WPath = &WPath::from_string(&folder_name);
         let python_path: WPath = base_path.join(folder_path);
         if python_path.exists() {

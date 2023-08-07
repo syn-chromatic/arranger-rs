@@ -1,13 +1,17 @@
 use std::num::ParseIntError;
 use std::str::Split;
 
-#[derive(Debug)]
+use std::error::Error;
+use std::fmt;
+use std::str::FromStr;
+
+#[derive(Debug, Clone)]
 pub struct SemanticVersion {
-    major: usize,
-    minor: usize,
-    patch: usize,
-    qualifier: String,
-    pre_release: String,
+    pub major: usize,
+    pub minor: usize,
+    pub patch: usize,
+    pub qualifier: String,
+    pub pre_release: String,
 }
 
 impl SemanticVersion {
@@ -26,6 +30,17 @@ impl SemanticVersion {
             pre_release: pre_release.unwrap_or(String::new()),
         }
     }
+
+    pub fn new_3p(major: usize, minor: usize, patch: usize) -> Self {
+        SemanticVersion {
+            major,
+            minor,
+            patch,
+            qualifier: String::new(),
+            pre_release: String::new(),
+        }
+    }
+
     pub fn from_string(string: &str) -> Option<Self> {
         let parts: Split<&str> = string.split(".");
 
@@ -63,6 +78,7 @@ impl SemanticVersion {
                 qualifier.push_str(part);
             }
         }
+
         let version = SemanticVersion {
             major: major?,
             minor: minor?,
@@ -93,6 +109,16 @@ impl SemanticVersion {
         }
         version
     }
+
+    pub fn get_2p_string(&self) -> String {
+        let version: String = format!("{}.{}", self.major, self.minor);
+        version
+    }
+
+    pub fn get_3p_string(&self) -> String {
+        let version: String = format!("{}.{}.{}", self.major, self.minor, self.patch);
+        version
+    }
 }
 
 impl SemanticVersion {
@@ -102,7 +128,7 @@ impl SemanticVersion {
 
         for ch in string.chars() {
             match ch {
-                'a' | 'b' => {
+                'a' | 'b' | 'c' => {
                     if !temp.is_empty() {
                         parts.push(temp.clone());
                         temp.clear();
@@ -119,5 +145,59 @@ impl SemanticVersion {
         }
 
         parts
+    }
+}
+
+#[derive(Debug)]
+pub enum ParseVersionError {
+    WrongFormat,
+    ParseError(ParseIntError),
+}
+
+impl std::fmt::Display for ParseVersionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ParseVersionError::WrongFormat => write!(f, "expected a version in this format => x.y"),
+            ParseVersionError::ParseError(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl Error for ParseVersionError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ParseVersionError::WrongFormat => None,
+            ParseVersionError::ParseError(e) => Some(e),
+        }
+    }
+}
+
+impl FromStr for SemanticVersion {
+    type Err = ParseVersionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s: &str = s.trim();
+        let mut parts: Vec<&str> = s.split('.').collect();
+        parts.retain(|&s| !s.is_empty());
+
+        let major: usize = parts
+            .get(0)
+            .ok_or(ParseVersionError::WrongFormat)?
+            .parse()
+            .map_err(ParseVersionError::ParseError)?;
+
+        let minor: usize = parts
+            .get(1)
+            .ok_or(ParseVersionError::WrongFormat)?
+            .parse()
+            .map_err(ParseVersionError::ParseError)?;
+
+        let patch: usize = parts
+            .get(2)
+            .unwrap_or(&"0")
+            .parse()
+            .map_err(ParseVersionError::ParseError)?;
+
+        Ok(SemanticVersion::new(major, minor, patch, None, None))
     }
 }

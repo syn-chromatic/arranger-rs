@@ -11,7 +11,7 @@ use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
 use crate::python::python::PythonEnvironment;
 use crate::python::python_ftp::PythonFTPRetriever;
-use crate::python::version::PythonVersion;
+use crate::general::version::SemanticVersion;
 use crate::python::virtualenv::VirtualEnv;
 use crate::python::virtualenv::VirtualEnvCFG;
 use crate::search::file::FileSearch;
@@ -24,7 +24,7 @@ pub fn create_virtual_env(major: usize, minor: usize) {
         let base_path_buf: PathBuf = data_dir.join("Programs/Python");
         let base_path: WPath = WPath::from_path_buf(&base_path_buf);
 
-        let python_version: PythonVersion = PythonVersion::new(major, minor, 0);
+        let python_version: SemanticVersion = SemanticVersion::new_3p(major, minor, 0);
 
         let environment: Option<PythonEnvironment> =
             PythonEnvironment::new(base_path, python_version);
@@ -43,7 +43,7 @@ pub fn create_virtual_env_in_path(path: WPath, major: usize, minor: usize) {
         let base_path_buf: PathBuf = data_dir.join("Programs/Python");
         let base_path: WPath = WPath::from_path_buf(&base_path_buf);
 
-        let python_version: PythonVersion = PythonVersion::new(major, minor, 0);
+        let python_version: SemanticVersion = SemanticVersion::new_3p(major, minor, 0);
 
         let environment: Option<PythonEnvironment> =
             PythonEnvironment::new(base_path, python_version);
@@ -68,7 +68,7 @@ pub fn fix_virtual_environments(fix_venv_command: FixVirtualEnvCommand) {
 }
 
 pub fn download_python(
-    version: PythonVersion,
+    version: SemanticVersion,
     list_structure: bool,
     arch: &str,
     platform: &str,
