@@ -1,4 +1,6 @@
 use std::collections::HashSet;
+use std::fs::File;
+use std::fs::ReadDir;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
@@ -7,15 +9,17 @@ use tokio::runtime::Runtime;
 
 use crate::general::http::HTTP;
 use crate::general::path::WPath;
+use crate::general::version::SemanticVersion;
 use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
+use crate::python::pip::{PipPackage, PipPackageParser};
 use crate::python::python::PythonEnvironment;
 use crate::python::python_ftp::PythonFTPRetriever;
-use crate::general::version::SemanticVersion;
 use crate::python::virtualenv::VirtualEnv;
 use crate::python::virtualenv::VirtualEnvCFG;
 use crate::search::file::FileSearch;
 use crate::FixVirtualEnvCommand;
+use crate::ListEnvPackagesCommand;
 
 pub fn create_virtual_env(major: usize, minor: usize) {
     let data_dir: Option<PathBuf> = dirs::data_local_dir();
@@ -64,6 +68,56 @@ pub fn fix_virtual_environments(fix_venv_command: FixVirtualEnvCommand) {
         let cfg_file: WPath = venv_cfg.cfg_file;
         let (major, minor): (usize, usize) = version.get_2p_version();
         create_virtual_env_in_path(cfg_file, major, minor);
+    }
+}
+
+pub fn list_environment_packages(list_packages_command: ListEnvPackagesCommand) {
+    let deep_search: bool = list_packages_command.deep_search;
+    let save_packages: bool = list_packages_command.save_packages;
+
+    println!("Deep search: {}", deep_search);
+    let venv_cfgs: Vec<VirtualEnvCFG> = get_virtual_env_cfgs(deep_search);
+
+    for venv_cfg in venv_cfgs {
+        let mut package_parser: PipPackageParser = PipPackageParser::new();
+        let mut cfg_wpath: WPath = venv_cfg.cfg_file;
+        cfg_wpath.to_directory();
+        let site_packages = cfg_wpath.join("Lib/site-packages/");
+
+        let cfg_path: &PathBuf = site_packages.get_path_buf();
+        let read_dir: Result<ReadDir, Error> = cfg_path.read_dir();
+        if let Ok(read_dir) = read_dir {
+            for entry in read_dir {
+                if let Ok(entry) = entry {
+                    let entry_path: PathBuf = entry.path();
+                    if entry_path.is_dir() {
+                        let entry_name: Option<&str> =
+                            entry_path.file_name().unwrap_or_default().to_str();
+                        if let Some(entry_name) = entry_name {
+                            package_parser.parse(entry_name);
+                        }
+                    }
+                }
+            }
+        }
+        println!("Path: {:?}", cfg_wpath);
+        let packages: &Vec<PipPackage> = package_parser.get_packages();
+        for package in packages {
+            let package_string: String = package.get_string();
+            println!("{}", package_string);
+        }
+
+        if save_packages {
+            let file_path: WPath = cfg_wpath.join("packages.txt");
+            let mut file = File::create(&file_path).expect("Could not create file");
+
+            for package in packages {
+                let requirement_string: String = package.get_requirement_string();
+                writeln!(file, "{}", requirement_string).expect("Could not write to file");
+            }
+        }
+
+        println!("\n")
     }
 }
 
@@ -193,7 +247,7 @@ fn get_virtual_env_cfgs(deep_search: bool) -> Vec<VirtualEnvCFG> {
         if !response {
             return venv_cfgs;
         }
-
+        println!("\n");
         for cfg_file in cfg_files {
             let cfg_parser: CFGParser = CFGParser::new();
             let result: Result<Vec<CFGLine>, Error> = cfg_parser.from_file(&cfg_file);

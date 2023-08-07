@@ -51,6 +51,8 @@ impl SemanticVersion {
         let mut qualifier: String = String::new();
 
         for (idx, part) in parts.enumerate() {
+            let part: &str = part.trim();
+
             if idx <= 2 {
                 let mut numeric: Result<usize, ParseIntError> = part.trim().parse::<usize>();
                 if numeric.is_err() && idx == 2 {
@@ -58,6 +60,14 @@ impl SemanticVersion {
                     if parts.len() == 2 {
                         numeric = parts[0].trim().parse::<usize>();
                         pre_release = parts[1].to_string();
+                    }
+                }
+
+                if numeric.is_err() && idx == 2 {
+                    let parts: Vec<String> = Self::get_qualifier_split(part);
+                    if parts.len() == 2 {
+                        numeric = parts[0].trim().parse::<usize>();
+                        qualifier = parts[1].to_string();
                     }
                 }
 
@@ -71,10 +81,10 @@ impl SemanticVersion {
                 }
             } else {
                 if idx > 3 {
-                    let part_fmt = format!(".{}", part);
-                    qualifier.push_str(&part_fmt);
+                    qualifier.push_str(&part);
                     continue;
                 }
+
                 qualifier.push_str(part);
             }
         }
@@ -107,6 +117,19 @@ impl SemanticVersion {
             let pre_release = format!(" {}", self.pre_release);
             version.push_str(&pre_release);
         }
+
+        let mut qualifier: String = self.qualifier.clone();
+
+        if !qualifier.is_empty() {
+            let qualifier_chars: Vec<char> = qualifier.chars().collect();
+            let fch: char = qualifier_chars[0];
+            if fch != '.' && (fch.is_alphabetic() || fch.is_numeric()) {
+                qualifier.insert(0, '.');
+            }
+
+            version.push_str(&qualifier);
+        }
+
         version
     }
 
@@ -127,8 +150,37 @@ impl SemanticVersion {
         let mut temp: String = String::new();
 
         for ch in string.chars() {
+            if ['a', 'b', 'c'].contains(&ch) {
+                if !temp.is_empty() {
+                    parts.push(temp.clone());
+                    temp.clear();
+                    temp.push(ch);
+                    continue;
+                }
+            } else if !ch.is_numeric() {
+                parts.clear();
+                temp.clear();
+                break;
+            } else {
+                temp.push(ch);
+                continue;
+            }
+        }
+
+        if !temp.is_empty() {
+            parts.push(temp);
+        }
+
+        parts
+    }
+
+    fn get_qualifier_split(string: &str) -> Vec<String> {
+        let mut parts: Vec<String> = Vec::new();
+        let mut temp: String = String::new();
+
+        for ch in string.chars() {
             match ch {
-                'a' | 'b' | 'c' => {
+                '+' | '.' => {
                     if !temp.is_empty() {
                         parts.push(temp.clone());
                         temp.clear();

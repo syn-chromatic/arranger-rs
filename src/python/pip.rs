@@ -1,5 +1,6 @@
 use crate::general::path::WPath;
 use crate::general::shell::{CommandExecute, CommandResponse};
+use crate::general::version::SemanticVersion;
 use crate::python::python::PythonEnvironment;
 
 pub struct Pip {
@@ -128,5 +129,57 @@ impl PipShow {
         let string = format!("Name: {}\nVersion: {}\nSummary: {}\nHomepage: {}\nAuthor: {}\nAuthor Email: {}\nLicense: {}\nLocation: {}\nRequires: {}\nRequired By: {}",
     self.name, self.version, self.summary, self.homepage, self.author, self.author_email, self.license, self.location, self.requires, self.required_by);
         string
+    }
+}
+
+pub struct PipPackage {
+    name: String,
+    version: SemanticVersion,
+}
+
+impl PipPackage {
+    pub fn new(name: String, version: SemanticVersion) -> Self {
+        PipPackage { name, version }
+    }
+
+    pub fn get_string(&self) -> String {
+        let version_string: String = self.version.get_string();
+        let string: String = format!("Name: {} | Version: {}", self.name, version_string);
+        string
+    }
+
+    pub fn get_requirement_string(&self) -> String {
+        let version_string: String = self.version.get_string();
+        let string: String = format!("{}=={}", self.name, version_string);
+        string
+    }
+}
+
+pub struct PipPackageParser {
+    packages: Vec<PipPackage>,
+}
+
+impl PipPackageParser {
+    pub fn new() -> Self {
+        let packages: Vec<PipPackage> = Vec::new();
+        PipPackageParser { packages }
+    }
+
+    pub fn parse(&mut self, string: &str) {
+        if string.ends_with("dist-info") {
+            let string: &str = string.trim_end_matches("dist-info");
+            let parts: Vec<&str> = string.split("-").collect();
+            let name: String = parts[0].to_string();
+            let version: Option<SemanticVersion> = SemanticVersion::from_string(parts[1]);
+
+            if let Some(version) = version {
+                let package: PipPackage = PipPackage::new(name, version);
+                self.packages.push(package);
+            }
+        }
+    }
+
+    pub fn get_packages(&self) -> &Vec<PipPackage> {
+        &self.packages
     }
 }

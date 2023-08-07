@@ -8,7 +8,9 @@ use clap::error::Error as ClapError;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::general::version::SemanticVersion;
-use crate::utils::{create_virtual_env, download_python, fix_virtual_environments};
+use crate::utils::{
+    create_virtual_env, download_python, fix_virtual_environments, list_environment_packages,
+};
 
 #[derive(Debug, Parser)]
 #[command(name = "Arranger")]
@@ -37,6 +39,8 @@ enum PythonSubCommands {
     VirtualEnv(VirtualEnvCommand),
     #[command(about = "Fix Virtual Environments", name = "fix-venv")]
     FixVirtualEnvironments(FixVirtualEnvCommand),
+    #[command(about = "List Environment Packages", name = "list-packages")]
+    ListEnvPackages(ListEnvPackagesCommand),
 }
 
 #[derive(Debug, Parser)]
@@ -76,6 +80,17 @@ pub struct FixVirtualEnvCommand {
     deep_search: bool,
 }
 
+#[derive(Debug, Parser)]
+pub struct ListEnvPackagesCommand {
+    /// Perform a deep search
+    #[arg(short = 'D', long = "deep-search")]
+    deep_search: bool,
+
+    /// Create Package Requirements File For Environments
+    #[arg(short = 'S', long = "save-packages", default_value = "false")]
+    save_packages: bool,
+}
+
 fn main() {
     let opt: Result<Cli, ClapError> = Cli::try_parse();
     match opt {
@@ -95,6 +110,9 @@ fn main() {
                 }
                 PythonSubCommands::FixVirtualEnvironments(fix_venv_command) => {
                     fix_virtual_environments(fix_venv_command);
+                }
+                PythonSubCommands::ListEnvPackages(list_packages_command) => {
+                    list_environment_packages(list_packages_command);
                 }
             },
         },
