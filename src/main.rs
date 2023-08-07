@@ -52,6 +52,10 @@ pub struct DownloadPythonCommand {
     /// Select Python version
     #[arg(short = 'V', long = "version")]
     version: PythonVersion,
+
+    // List File Structure
+    #[arg(short = 'L', long = "list", default_value = "false")]
+    list_structure: bool,
 }
 
 #[derive(Debug, Parser)]
@@ -75,7 +79,8 @@ fn main() {
             Commands::Python(python_opt) => match python_opt.subcommands {
                 PythonSubCommands::DownloadPython(download_command) => {
                     let version: PythonVersion = download_command.version;
-                    download_python(version);
+                    let list_structure: bool = download_command.list_structure;
+                    download_python(version, list_structure);
                 }
                 PythonSubCommands::VirtualEnv(venv_command) => {
                     let (major, minor) = venv_command.version.get_version();

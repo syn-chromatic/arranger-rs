@@ -169,6 +169,39 @@ impl PythonFTPRetriever {
         None
     }
 
+    pub async fn list_file_structure(&self, version: &PythonVersion) {
+        let version_directory: String = self.get_version_directory(version);
+        let file_structure: Option<FileStructure> = FileStructure::new(&self.ftp_url).await;
+
+        if let Some(mut file_structure) = file_structure {
+            let result: bool = file_structure.access_directory(&version_directory).await;
+            if result {
+                println!("Files:");
+                let structure: HashSet<LinkType> = file_structure.get_structure();
+                for link in structure {
+                    match link {
+                        LinkType::File(file) => {
+                            let filename: Option<PythonFilename> = PythonFilename::new(&file);
+                            if let Some(filename) = filename {
+                                let name: String = filename.name;
+                                let version: String = filename.version.get_string();
+                                let platform: String = filename.platform;
+                                let architecture: String = filename.architecture;
+                                let package_type: String = filename.package_type;
+                                let fmt_str: String = format!(
+                                    "Name: {} | Ver: {} | Platform: {} | Arch: {} | Type: {}",
+                                    name, version, platform, architecture, package_type
+                                );
+                                println!("{}", fmt_str);
+                            }
+                        }
+                        LinkType::Directory(_) => {}
+                    }
+                }
+            }
+        }
+    }
+
     fn get_version_directory(&self, version: &PythonVersion) -> String {
         let (major, minor, patch): (usize, usize, usize) = version.get_3p_version();
         let version_directory: String = format!("{}.{}.{}/", major, minor, patch);
@@ -363,19 +396,25 @@ impl PythonFilename {
         let second_part: &String = &split[1];
         let mut version_part: Vec<char> = Vec::new();
         let mut version_segments: usize = 0;
+        let mut filled_segment: bool = false;
         let mut p_numeric: bool = false;
         let mut p_separate: bool = false;
         let mut split_idx: usize = 0;
 
         for (idx, character) in second_part.chars().enumerate() {
-            if character.is_numeric() {
+            if character.is_numeric() && !(idx == second_part.len() - 1) {
                 version_part.push(character);
                 p_numeric = true;
                 p_separate = false;
-            } else if character == '.' && version_segments == 2 && p_numeric {
+                filled_segment = true;
+            } else if !character.is_numeric()
+                && version_segments == 2
+                && p_numeric
+                && filled_segment
+            {
                 split_idx = idx;
                 break;
-            } else if !p_numeric && !p_separate {
+            } else if (!p_numeric && !p_separate) || (idx == second_part.len() - 1) {
                 version_part.clear();
                 break;
             } else if character == '.' && p_numeric {
@@ -383,13 +422,14 @@ impl PythonFilename {
                 p_numeric = false;
                 p_separate = true;
                 version_segments += 1;
+                filled_segment = false;
             } else {
                 p_numeric = false;
                 p_separate = false;
             }
         }
 
-        if !version_part.is_empty() && version_part.len() != second_part.len() {
+        if !version_part.is_empty() {
             let remaining_part: String = second_part.split_at(split_idx + 1).1.to_string();
             let version_string: String = version_part.into_iter().collect();
             split.remove(1);

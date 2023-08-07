@@ -65,4 +65,9 @@ impl SemanticVersion {
     pub fn get_4p_version(&self) -> (usize, usize, usize, &str) {
         (self.major, self.minor, self.patch, &self.qualifier)
     }
+
+    pub fn get_string(&self) -> String {
+        let version: String = format!("{}.{}.{}", self.major, self.minor, self.patch);
+        version
+    }
 }

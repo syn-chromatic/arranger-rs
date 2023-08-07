@@ -67,9 +67,14 @@ pub fn fix_virtual_environments(fix_venv_command: FixVirtualEnvCommand) {
     }
 }
 
-pub fn download_python(version: PythonVersion) {
+pub fn download_python(version: PythonVersion, list_structure: bool) {
     let rn: Runtime = Runtime::new().unwrap();
     let ftp_retriever: PythonFTPRetriever = PythonFTPRetriever::new();
+    if list_structure {
+        rn.block_on(ftp_retriever.list_file_structure(&version));
+        return;
+    }
+
     let result: Option<String> = rn.block_on(ftp_retriever.get_windows_amd64_install(&version));
     if let Some(url) = result {
         println!("Found version: {}", url);
