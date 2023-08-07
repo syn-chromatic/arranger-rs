@@ -49,15 +49,15 @@ pub struct DownloadPythonCommand {
     #[arg(short = 'L', long = "list", default_value = "false")]
     list_structure: bool,
 
-    /// Specify Architecture For Search: [amd64, arm64, n/a]
+    /// Specify Architecture: [amd64, arm64, n/a]
     #[arg(short = 'A', long = "arch", default_value = "amd64")]
     architecture: String,
 
-    /// Specify Platform For Search: [windows, macos, linux]
+    /// Specify Platform: [windows, macos, linux]
     #[arg(short = 'P', long = "platform", default_value = "windows")]
     platform: String,
 
-    /// Specify Package Type For Search: [standard, webinstall, embed]
+    /// Specify Package Type: [standard, webinstall, embed]
     #[arg(short = 'T', long = "package-type", default_value = "standard")]
     package_type: String,
 }
