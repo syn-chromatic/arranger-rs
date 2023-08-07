@@ -53,7 +53,7 @@ pub struct DownloadPythonCommand {
     #[arg(short = 'A', long = "arch", default_value = "amd64")]
     architecture: String,
 
-    /// Specify Platform For Search: [windows, macos]
+    /// Specify Platform For Search: [windows, macos, linux]
     #[arg(short = 'P', long = "platform", default_value = "windows")]
     platform: String,
 
