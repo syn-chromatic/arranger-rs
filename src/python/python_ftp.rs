@@ -1,12 +1,14 @@
 use core::fmt::Debug;
 use std::collections::HashSet;
 use std::error::Error;
+use std::io;
+use std::io::Write;
 
 use scraper::{Html, Selector};
 
-use crate::general::version::SemanticVersion;
+use crate::general::version::{PreRelease, SemanticVersion};
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum LinkType {
     File(String),
     Directory(String),
@@ -75,6 +77,7 @@ impl FileStructure {
                     let new_url: String = format!("{}{}", self.url, dir);
                     let structure: Result<HashSet<LinkType>, Box<dyn std::error::Error>> =
                         Self::build_file_structure(&new_url).await;
+
                     if let Ok(structure) = structure {
                         self.url = new_url;
                         self.structure = structure;
@@ -120,9 +123,7 @@ impl FileStructure {
         }
     }
 
-    async fn build_file_structure(
-        url: &str,
-    ) -> Result<HashSet<LinkType>, Box<dyn std::error::Error>> {
+    async fn build_file_structure(url: &str) -> Result<HashSet<LinkType>, Box<dyn Error>> {
         let resp: String = reqwest::get(url).await?.text().await?;
 
         let fragment: Html = Html::parse_document(&resp);
@@ -136,6 +137,12 @@ impl FileStructure {
             if let Some(link_type) = link_type {
                 links.insert(link_type);
             }
+        }
+        if links.is_empty() {
+            return Err(Box::new(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Unable to access directory.",
+            )));
         }
         Ok(links)
     }
@@ -151,25 +158,68 @@ impl PythonFTPRetriever {
         PythonFTPRetriever { ftp_url }
     }
 
-    pub async fn get_install_file(
+    pub async fn get_setup_file_latest_patch(
+        &self,
+        version: &mut SemanticVersion,
+        arch: &str,
+        platform: &str,
+        package_type: &str,
+    ) -> Option<String> {
+        version.set_patch(0);
+        let mut setup_file: Option<String> = None;
+        let mut counter: usize = 0;
+        let limit: usize = 50;
+
+        while counter <= limit {
+            counter += 1;
+            let file: Option<String> = self
+                .get_setup_file(&version, arch, platform, package_type)
+                .await;
+
+            io::stdout().flush().unwrap();
+            if let Some(_) = file {
+                setup_file = file;
+            } else if version.get_patch() == 0 {
+            } else {
+                let patch: usize = version.get_patch();
+                version.set_patch(patch - 1);
+                break;
+            }
+
+            print!("\rVersion: {}", version.get_string());
+            io::stdout().flush().unwrap();
+
+            let patch: usize = version.get_patch();
+            version.set_patch(patch + 1);
+        }
+        println!();
+        setup_file
+    }
+
+    pub async fn get_setup_file(
         &self,
         version: &SemanticVersion,
         arch: &str,
         platform: &str,
         package_type: &str,
     ) -> Option<String> {
-        let version_directory: String = self.get_version_directory(version);
+        let version_3p_directory: String = self.get_3p_version_directory(version);
         let file_structure: Option<FileStructure> = FileStructure::new(&self.ftp_url).await;
 
         if let Some(mut file_structure) = file_structure {
-            let result: bool = file_structure.access_directory(&version_directory).await;
+            let mut result: bool = file_structure.access_directory(&version_3p_directory).await;
+            if !result && version.get_patch() == 0 {
+                let version_2p_directory: String = self.get_2p_version_directory(version);
+                result = file_structure.access_directory(&version_2p_directory).await;
+            }
+
             if result {
                 let structure: HashSet<LinkType> = file_structure.get_structure();
 
-                let windows_link: Option<String> =
-                    self.find_install_file(&structure, arch, platform, package_type);
-                if let Some(windows_link) = windows_link {
-                    let url: String = format!("{}{}", file_structure.url, windows_link);
+                let setup_file: Option<String> =
+                    self.find_setup_file(&structure, arch, platform, package_type);
+                if let Some(setup_file) = setup_file {
+                    let url: String = format!("{}{}", file_structure.url, setup_file);
                     return Some(url);
                 }
             }
@@ -178,11 +228,16 @@ impl PythonFTPRetriever {
     }
 
     pub async fn list_file_structure(&self, version: &SemanticVersion) {
-        let version_directory: String = self.get_version_directory(version);
+        let version_3p_directory: String = self.get_3p_version_directory(version);
         let file_structure: Option<FileStructure> = FileStructure::new(&self.ftp_url).await;
 
         if let Some(mut file_structure) = file_structure {
-            let result: bool = file_structure.access_directory(&version_directory).await;
+            let mut result: bool = file_structure.access_directory(&version_3p_directory).await;
+            if !result && version.get_patch() == 0 {
+                let version_2p_directory: String = self.get_2p_version_directory(version);
+                result = file_structure.access_directory(&version_2p_directory).await;
+            }
+
             if result {
                 let structure: HashSet<LinkType> = file_structure.get_structure();
                 for link in structure {
@@ -209,19 +264,28 @@ impl PythonFTPRetriever {
         }
     }
 
-    fn get_version_directory(&self, version: &SemanticVersion) -> String {
+    fn get_3p_version_directory(&self, version: &SemanticVersion) -> String {
         let (major, minor, patch): (usize, usize, usize) = version.get_3p_version();
         let version_directory: String = format!("{}.{}.{}/", major, minor, patch);
         version_directory
     }
 
-    fn find_install_file(
+    fn get_2p_version_directory(&self, version: &SemanticVersion) -> String {
+        let (major, minor): (usize, usize) = version.get_2p_version();
+        let version_directory: String = format!("{}.{}/", major, minor);
+        version_directory
+    }
+
+    fn find_setup_file(
         &self,
         structure: &HashSet<LinkType>,
         arch: &str,
         platform: &str,
         package_type: &str,
     ) -> Option<String> {
+        let mut setup_file: Option<String> = None;
+        let mut python_filename: Option<PythonFilename> = None;
+
         for link in structure {
             match link {
                 LinkType::File(file) => {
@@ -235,17 +299,40 @@ impl PythonFTPRetriever {
                             &["exe", "msi", "pkg", "dmg", "tgz"],
                         );
                         if requirement {
-                            return Some(file.to_string());
+                            if let Some(_python_filename) = &python_filename {
+                                let version: &SemanticVersion = &filename.version;
+                                let prev_version: &SemanticVersion = &_python_filename.version;
+
+                                let pre_release: &Option<PreRelease> = version.get_pre_release();
+                                let prev_pre_release: &Option<PreRelease> =
+                                    prev_version.get_pre_release();
+
+                                if let Some(pre_release) = pre_release {
+                                    if let Some(prev_pre_release) = prev_pre_release {
+                                        if pre_release < prev_pre_release {
+                                            continue;
+                                        }
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                                setup_file = Some(file.to_string());
+                                python_filename = Some(filename);
+                            } else {
+                                setup_file = Some(file.to_string());
+                                python_filename = Some(filename);
+                            }
                         }
                     }
                 }
                 LinkType::Directory(_) => {}
             }
         }
-        None
+        setup_file
     }
 }
 
+#[derive(Clone)]
 pub struct PythonFilename {
     name: String,
     version: SemanticVersion,

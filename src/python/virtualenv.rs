@@ -15,11 +15,11 @@ pub struct VirtualEnvCFG {
     pub base_prefix: WPath,
     pub base_exec_prefix: WPath,
     pub base_executable: WPath,
-    pub cfg_file: WPath,
+    pub file: WPath,
 }
 
 impl VirtualEnvCFG {
-    pub fn new(cfg_file: WPath, parsed_cfg: &Vec<CFGLine>) -> Option<Self> {
+    pub fn new(file: WPath, parsed_cfg: &Vec<CFGLine>) -> Option<Self> {
         let mut home: Option<WPath> = None;
         let mut implementation: Option<String> = None;
         let mut version_info: Option<SemanticVersion> = None;
@@ -58,11 +58,18 @@ impl VirtualEnvCFG {
             base_prefix: base_prefix.unwrap(),
             base_exec_prefix: base_exec_prefix.unwrap(),
             base_executable: base_executable.unwrap(),
-            cfg_file,
+            file,
         };
         Some(venv_cfg)
     }
 
+    pub fn get_environment_directory(&self) -> WPath {
+        let mut directory: WPath = self.file.as_directory();
+        directory
+    }
+}
+
+impl VirtualEnvCFG {
     fn parse_boolean_string(boolean: &str) -> Option<bool> {
         match boolean {
             "true" => Some(true),
@@ -82,8 +89,14 @@ impl VirtualEnv {
         VirtualEnv { environment }
     }
 
-    pub fn create_virtual_env_in_path(&self, mut path: WPath) {
-        path.to_directory();
+    pub fn create_environment(&self) {
+        let venv_name: String = self.get_environment_name();
+        let venv_args: [&str; 3] = ["-m", "virtualenv", &venv_name];
+        self.execute_environment_command(&venv_args);
+    }
+
+    pub fn create_environment_in_path(&self, path: &WPath) {
+        let path: WPath = path.as_directory();
         let canonical_string: Option<String> = path.get_canonical_string();
 
         if let Some(canonical_string) = canonical_string {
@@ -94,17 +107,13 @@ impl VirtualEnv {
             );
 
             let venv_args: [&str; 3] = ["-m", "virtualenv", &canonical_string];
-            self.execute_virtual_env_command(&venv_args);
+            self.execute_environment_command(&venv_args);
         }
     }
+}
 
-    pub fn create_virtual_env(&self) {
-        let venv_name: String = self.get_virtual_env_name();
-        let venv_args: [&str; 3] = ["-m", "virtualenv", &venv_name];
-        self.execute_virtual_env_command(&venv_args);
-    }
-
-    fn execute_virtual_env_command(&self, venv_args: &[&str]) {
+impl VirtualEnv {
+    fn execute_environment_command(&self, venv_args: &[&str]) {
         let pip: Pip = Pip::new(&self.environment);
         let python_executable: WPath = self.environment.get_python_executable();
 
@@ -123,7 +132,7 @@ impl VirtualEnv {
         }
 
         if !venv_installed {
-            println!("INSTALLING PACKAGE");
+            println!("Installing Virtual Environment Package..");
             pip.install_package(package_name);
         }
 
@@ -135,9 +144,9 @@ impl VirtualEnv {
         }
     }
 
-    fn get_virtual_env_name(&self) -> String {
-        let (major, minor) = self.environment.version.get_2p_version();
-
+    fn get_environment_name(&self) -> String {
+        let version: &SemanticVersion = &self.environment.version;
+        let (major, minor): (usize, usize) = version.get_2p_version();
         let name: String = format!("pyenv{}{}", major, minor);
         name
     }

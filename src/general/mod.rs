@@ -1,4 +1,5 @@
-pub mod version;
+pub mod http;
 pub mod path;
 pub mod shell;
-pub mod http;
+pub mod terminal;
+pub mod version;

@@ -11,12 +11,11 @@ impl HTTP {
         HTTP {}
     }
 
-    pub async fn download_file(&self, url: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn download_file(&self, url: &str) -> Result<String, Box<dyn std::error::Error>> {
         let url: reqwest::Url = reqwest::Url::parse(url)?;
         let file_name: String = self.get_file_name(&url)?;
         let response: reqwest::Response = self.download(&url).await?;
-        self.write_file(file_name, response).await?;
-        Ok(())
+        self.write_file(file_name, response).await
     }
 }
 
@@ -29,12 +28,11 @@ impl HTTP {
         &self,
         file_name: String,
         response: reqwest::Response,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<String, Box<dyn Error>> {
         let mut dest = File::create(&file_name)?;
         let bytes = response.bytes().await?;
         dest.write_all(&bytes)?;
-        println!("Successfully downloaded file: {}", file_name);
-        Ok(())
+        Ok(file_name)
     }
 
     fn get_file_name(&self, url: &reqwest::Url) -> Result<String, io::Error> {

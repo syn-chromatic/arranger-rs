@@ -1,6 +1,7 @@
 use core::fmt::{Debug, Formatter};
 use std::ffi::OsStr;
-use std::io::Error;
+use std::fs::ReadDir;
+use std::io;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone)]
@@ -48,8 +49,13 @@ impl WPath {
         self.path.is_dir()
     }
 
-    pub fn to_canonical(&mut self) -> Option<Error> {
-        let canonical_path: Result<PathBuf, Error> = self.path.canonicalize();
+    pub fn read_dir(&self) -> Result<ReadDir, io::Error> {
+        let read_dir: Result<ReadDir, io::Error> = self.path.read_dir();
+        read_dir
+    }
+
+    pub fn to_canonical(&mut self) -> Option<io::Error> {
+        let canonical_path: Result<PathBuf, io::Error> = self.path.canonicalize();
         if let Ok(canonical_path) = canonical_path {
             self.path = canonical_path;
             self.is_canonical = true;
@@ -67,12 +73,12 @@ impl WPath {
         }
     }
 
-    pub fn as_canonical(&self) -> Result<WPath, Error> {
+    pub fn as_canonical(&self) -> Result<WPath, io::Error> {
         if self.is_canonical {
             return Ok(self.clone());
         }
 
-        let canonical_path: Result<PathBuf, Error> = self.path.canonicalize();
+        let canonical_path: Result<PathBuf, io::Error> = self.path.canonicalize();
         if let Ok(canonical_path) = canonical_path {
             let ab_path: WPath = WPath {
                 path: canonical_path,
@@ -98,7 +104,7 @@ impl WPath {
     }
 
     pub fn get_canonical_string(&self) -> Option<String> {
-        let canonical_path: Result<WPath, Error> = self.as_canonical();
+        let canonical_path: Result<WPath, io::Error> = self.as_canonical();
         if let Ok(canonical_path) = canonical_path {
             let path: PathBuf = canonical_path.path;
             let mut string: &str = path.to_str()?;

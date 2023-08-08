@@ -5,13 +5,67 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreRelease {
+    release_type: u8,
+    version: usize,
+}
+
+impl PreRelease {
+    pub fn from_string(s: &str) -> Option<Self> {
+        if !s.is_empty() {
+            let split_idx: Option<usize> = Self::get_split_idx(s);
+            if let Some(split_idx) = split_idx {
+                let (alpha, numeric) = s.split_at(split_idx);
+                let release_type: u8 = alpha.as_bytes()[0];
+                if let Ok(version) = numeric.parse::<usize>() {
+                    return Some(PreRelease {
+                        release_type,
+                        version,
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    pub fn get_string(&self) -> String {
+        let character: char = char::from(self.release_type);
+        let string: String = format!("{}{}", character, self.version);
+        string
+    }
+}
+
+impl PreRelease {
+    fn get_split_idx(s: &str) -> Option<usize> {
+        for (idx, ch) in s.chars().enumerate() {
+            if ch.is_numeric() {
+                return Some(idx);
+            }
+        }
+        None
+    }
+}
+
+impl PartialOrd for PreRelease {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        if self.release_type < other.release_type {
+            Some(std::cmp::Ordering::Less)
+        } else if self.release_type > other.release_type {
+            Some(std::cmp::Ordering::Greater)
+        } else {
+            self.version.partial_cmp(&other.version)
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SemanticVersion {
     pub major: usize,
     pub minor: usize,
     pub patch: usize,
     pub qualifier: String,
-    pub pre_release: String,
+    pub pre_release: Option<PreRelease>,
 }
 
 impl SemanticVersion {
@@ -20,14 +74,14 @@ impl SemanticVersion {
         minor: usize,
         patch: usize,
         qualifier: Option<String>,
-        pre_release: Option<String>,
+        pre_release: Option<PreRelease>,
     ) -> Self {
         SemanticVersion {
             major,
             minor,
             patch,
             qualifier: qualifier.unwrap_or(String::new()),
-            pre_release: pre_release.unwrap_or(String::new()),
+            pre_release,
         }
     }
 
@@ -37,7 +91,7 @@ impl SemanticVersion {
             minor,
             patch,
             qualifier: String::new(),
-            pre_release: String::new(),
+            pre_release: None,
         }
     }
 
@@ -46,8 +100,8 @@ impl SemanticVersion {
 
         let mut major: Option<usize> = None;
         let mut minor: Option<usize> = None;
-        let mut patch: Option<usize> = None;
-        let mut pre_release: String = String::new();
+        let mut patch: usize = 0;
+        let mut pre_release_str: String = String::new();
         let mut qualifier: String = String::new();
 
         for (idx, part) in parts.enumerate() {
@@ -59,7 +113,7 @@ impl SemanticVersion {
                     let parts: Vec<String> = Self::get_pre_release_split(part);
                     if parts.len() == 2 {
                         numeric = parts[0].trim().parse::<usize>();
-                        pre_release = parts[1].to_string();
+                        pre_release_str = parts[1].to_string();
                     }
                 }
 
@@ -75,7 +129,7 @@ impl SemanticVersion {
                     match idx {
                         0 => major = Some(numeric),
                         1 => minor = Some(numeric),
-                        2 => patch = Some(numeric),
+                        2 => patch = numeric,
                         _ => return None,
                     }
                 }
@@ -89,11 +143,12 @@ impl SemanticVersion {
             }
         }
 
-        let version = SemanticVersion {
+        let pre_release: Option<PreRelease> = PreRelease::from_string(&pre_release_str);
+        let version: SemanticVersion = SemanticVersion {
             major: major?,
             minor: minor?,
-            patch: patch?,
-            pre_release,
+            patch,
+            pre_release: pre_release,
             qualifier,
         };
         Some(version)
@@ -113,9 +168,8 @@ impl SemanticVersion {
 
     pub fn get_string(&self) -> String {
         let mut version: String = format!("{}.{}.{}", self.major, self.minor, self.patch);
-        if !self.pre_release.is_empty() {
-            let pre_release = format!(" {}", self.pre_release);
-            version.push_str(&pre_release);
+        if let Some(pre_release) = &self.pre_release {
+            version.push_str(&pre_release.get_string());
         }
 
         let mut qualifier: String = self.qualifier.clone();
@@ -142,16 +196,52 @@ impl SemanticVersion {
         let version: String = format!("{}.{}.{}", self.major, self.minor, self.patch);
         version
     }
+
+    pub fn set_major(&mut self, major: usize) {
+        self.major = major;
+    }
+
+    pub fn set_minor(&mut self, minor: usize) {
+        self.minor = minor;
+    }
+
+    pub fn set_patch(&mut self, patch: usize) {
+        self.patch = patch;
+    }
+
+    pub fn get_major(&self) -> usize {
+        self.major
+    }
+
+    pub fn get_minor(&self) -> usize {
+        self.minor
+    }
+
+    pub fn get_patch(&self) -> usize {
+        self.patch
+    }
+
+    pub fn get_pre_release(&self) -> &Option<PreRelease> {
+        &self.pre_release
+    }
 }
 
 impl SemanticVersion {
     fn get_pre_release_split(string: &str) -> Vec<String> {
         let mut parts: Vec<String> = Vec::new();
         let mut temp: String = String::new();
+        let mut release_tag: bool = false;
 
         for ch in string.chars() {
-            if ['a', 'b', 'c'].contains(&ch) {
-                if !temp.is_empty() {
+            if ch == 'r' {
+                release_tag = true;
+                parts.push(temp.clone());
+                temp.clear();
+                temp.push(ch);
+            } else if ['a', 'b', 'c'].contains(&ch) {
+                if release_tag {
+                    temp.push(ch);
+                } else if !temp.is_empty() {
                     parts.push(temp.clone());
                     temp.clear();
                     temp.push(ch);

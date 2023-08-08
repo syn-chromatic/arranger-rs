@@ -2,10 +2,14 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs::{DirEntry, ReadDir};
-use std::io::{Error, Write};
+use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::general::terminal::Terminal;
+use crate::general::terminal::{ANSICode, WhiteANSI, YellowANSI};
+
 pub struct SearchProgress {
+    terminal: Terminal,
     search_counter: usize,
     match_counter: usize,
     previous_length: usize,
@@ -13,11 +17,13 @@ pub struct SearchProgress {
 
 impl SearchProgress {
     pub fn new() -> Self {
+        let terminal: Terminal = Terminal::new();
         let search_counter: usize = 0;
         let match_counter: usize = 0;
         let previous_length: usize = 0;
 
         SearchProgress {
+            terminal,
             search_counter,
             match_counter,
             previous_length,
@@ -33,15 +39,30 @@ impl SearchProgress {
     }
 
     pub fn print_progress(&mut self) {
-        let string: String = format!(
-            "\rMatch: {} | Searched: {}",
-            self.match_counter, self.search_counter
-        );
+        let match_string: String = self.match_counter.to_string();
+        let search_string: String = self.search_counter.to_string();
+        let parts: [&str; 5] = [
+            "\rMatch: ",
+            &match_string,
+            " | ",
+            "Searched: ",
+            &search_string,
+        ];
+        let colors: [Box<dyn ANSICode>; 5] = [
+            YellowANSI.boxed(),
+            WhiteANSI.boxed(),
+            WhiteANSI.boxed(),
+            YellowANSI.boxed(),
+            WhiteANSI.boxed(),
+        ];
+
+        let string: String = parts.join("");
         let fill: usize = self.get_fill(&string);
         let fill_string: String = " ".repeat(fill);
         self.previous_length = string.len();
-        print!("{}{}", string, fill_string);
-        std::io::stdout().flush().unwrap();
+
+        self.terminal.write_color_p(&parts, &colors);
+        self.terminal.write_color(&fill_string, WhiteANSI);
     }
 
     pub fn print_finalize(&mut self) {
@@ -54,7 +75,9 @@ impl SearchProgress {
         self.match_counter = 0;
         self.previous_length = 0;
     }
+}
 
+impl SearchProgress {
     fn get_fill(&self, string: &str) -> usize {
         let previous_length: isize = self.previous_length as isize;
         let current_length: isize = string.len() as isize;
@@ -156,7 +179,11 @@ impl FileSearch {
             string = stripped_string.to_string();
         }
 
-        println!("Searching in: [{}]", string);
+        let terminal: Terminal = Terminal::new();
+        let path_string: String = format!("[{}]", string);
+        let parts: [&str; 2] = ["Searching In: ", &path_string];
+        let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
+        terminal.writeln_color_p(&parts, &colors);
     }
 
     fn format_extension(&self, ext: &str) -> String {
@@ -176,7 +203,7 @@ impl FileSearch {
         filter_validation
     }
 
-    fn get_entry_path(&self, entry: &Result<DirEntry, Error>) -> Option<PathBuf> {
+    fn get_entry_path(&self, entry: &Result<DirEntry, io::Error>) -> Option<PathBuf> {
         if entry.is_ok() {
             let path_buf: PathBuf = entry.as_ref().unwrap().path();
             let path_canonical: Option<PathBuf> = self.get_canonical_path(&path_buf);
@@ -186,21 +213,21 @@ impl FileSearch {
     }
 
     fn get_canonical_path(&self, path: &PathBuf) -> Option<PathBuf> {
-        let path_canonical: Result<PathBuf, Error> = path.canonicalize();
+        let path_canonical: Result<PathBuf, io::Error> = path.canonicalize();
         if path_canonical.is_ok() {
             return Some(path_canonical.unwrap());
         }
 
-        println!("Path Inaccessible: {:?}\n", path);
+        println!("\nPath Inaccessible: {:?}\n", path);
         None
     }
 
     fn get_directory_entries(&self, root: &PathBuf) -> Option<ReadDir> {
-        let entries: Result<ReadDir, Error> = root.read_dir();
+        let entries: Result<ReadDir, io::Error> = root.read_dir();
         if entries.is_ok() {
             return Some(entries.unwrap());
         }
-        println!("Path Inaccessible: {:?}\n", root);
+        println!("\nPath Inaccessible: {:?}\n", root);
         None
     }
 
