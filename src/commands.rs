@@ -186,6 +186,12 @@ impl PythonPackagesCommand {
             let requirement_string: String = package.get_requirement_string();
             writeln!(file, "{}", requirement_string).expect("Could not write to file");
         }
+
+        let terminal = Terminal::new();
+        let path_str: String = format!("[{:?}]", file_path);
+        let parts: [&str; 2] = ["Packages List Saved: ", &path_str];
+        let colors: [Box<dyn ANSICode>; 2] = [GreenANSI.boxed(), WhiteANSI.boxed()];
+        terminal.writeln_color_p(&parts, &colors);
     }
 }
 

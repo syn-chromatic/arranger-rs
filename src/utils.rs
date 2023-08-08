@@ -13,17 +13,17 @@ pub fn confirm_and_continue() -> bool {
     match io::stdin().read_line(&mut input) {
         Ok(_) => {
             if input.trim() == "y" || input.trim() == "Y" {
-                let string: &str = "Continuing...";
+                let string: &str = "Continuing...\n";
                 terminal.writeln_color(string, GreenANSI);
                 return true;
             } else {
-                let string: &str = "Not continuing...";
+                let string: &str = "Not continuing...\n";
                 terminal.writeln_color(string, RedANSI);
                 return false;
             }
         }
         Err(e) => {
-            let string: String = format!("Failed to read line: {}", e);
+            let string: String = format!("Failed to read line: {}\n", e);
             terminal.writeln_color(&string, RedANSI);
             return false;
         }

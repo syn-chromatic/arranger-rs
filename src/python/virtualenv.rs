@@ -64,7 +64,7 @@ impl VirtualEnvCFG {
     }
 
     pub fn get_environment_directory(&self) -> WPath {
-        let mut directory: WPath = self.file.as_directory();
+        let directory: WPath = self.file.as_directory();
         directory
     }
 }

@@ -51,11 +51,11 @@ pub struct PythonDownloadOption {
     #[arg(short = 'V', long = "version")]
     version: SemanticVersion,
 
-    /// Retrieve Most Recent Patch
+    /// Retrieve most recent patch
     #[arg(short = 'R', long = "recent-patch", default_value = "false")]
     recent_patch: bool,
 
-    /// List Python Version Files [No Download]
+    /// List Python version files [No Download]
     #[arg(short = 'L', long = "list", default_value = "false")]
     list_structure: bool,
 
@@ -92,7 +92,7 @@ pub struct PackagesOption {
     #[arg(short = 'D', long = "deep-search")]
     deep_search: bool,
 
-    /// Create Package Requirements File For Environments
+    /// Create package list for each environment
     #[arg(short = 'S', long = "save-packages", default_value = "false")]
     save_packages: bool,
 }
