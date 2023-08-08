@@ -125,6 +125,16 @@ impl Terminal {
         println!();
     }
 
+    pub fn write_2p_primary<T: ANSICode + 'static>(&self, parts: &[&str; 2], ansi_color: T) {
+        let colors: [Box<dyn ANSICode>; 2] = [ansi_color.boxed(), WhiteANSI.boxed()];
+        self.write_color_p(parts, &colors);
+    }
+
+    pub fn writeln_2p_primary<T: ANSICode + 'static>(&self, parts: &[&str; 2], ansi_color: T) {
+        let colors: [Box<dyn ANSICode>; 2] = [ansi_color.boxed(), WhiteANSI.boxed()];
+        self.writeln_color_p(parts, &colors);
+    }
+
     pub fn set_ansi_color<T: ANSICode + 'static>(&mut self, ansi_color: T) {
         self.ansi_color = Box::new(ansi_color);
     }

@@ -2,6 +2,7 @@ mod commands;
 mod general;
 mod parsers;
 mod python;
+mod rust;
 mod search;
 mod utils;
 
@@ -13,6 +14,7 @@ use crate::commands::PythonDLCommand;
 use crate::commands::PythonFixEnvCommand;
 use crate::commands::PythonPackagesCommand;
 use crate::general::version::SemanticVersion;
+use crate::rust::tasks::generate_rust_run_task;
 
 #[derive(Debug, Parser)]
 #[command(name = "Arranger")]
@@ -23,8 +25,10 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    #[command(about = "Python Arranger")]
+    #[command(about = "Python Tools")]
     Python(PythonCommand),
+    #[command(about = "Rust Tools")]
+    Rust(RustCommand),
 }
 
 #[derive(Debug, Parser)]
@@ -97,6 +101,25 @@ pub struct PackagesOption {
     save_packages: bool,
 }
 
+#[derive(Debug, Parser)]
+struct RustCommand {
+    #[command(subcommand)]
+    subcommands: RustSubCommands,
+}
+
+#[derive(Debug, Subcommand)]
+enum RustSubCommands {
+    #[command(about = "Generate VSCode Tasks", name = "vscode-tasks")]
+    GenerateTasks(GenerateTasksOption),
+}
+
+#[derive(Debug, Parser)]
+pub struct GenerateTasksOption {
+    /// Generate Run Task
+    #[arg(short = 'R', long = "run-task", default_value = "false")]
+    run_task: bool,
+}
+
 #[tokio::main]
 async fn main() {
     let opt: Result<Cli, ClapError> = Cli::try_parse();
@@ -118,6 +141,13 @@ async fn main() {
                 PythonSubCommands::EnvPackages(option) => {
                     let command: PythonPackagesCommand = PythonPackagesCommand::new(option);
                     command.execute_command();
+                }
+            },
+            Commands::Rust(rust_opt) => match rust_opt.subcommands {
+                RustSubCommands::GenerateTasks(option) => {
+                    if option.run_task {
+                        generate_rust_run_task();
+                    }
                 }
             },
         },
