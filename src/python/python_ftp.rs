@@ -414,11 +414,16 @@ impl PythonFilename {
         }
     }
 
-    fn is_package_type(segment: &str) -> bool {
-        match segment {
-            "embed" => return true,
-            "webinstall" => return true,
-            _ => return false,
+    fn is_package_type(segment: &str, extension: &str) -> Option<String> {
+        if extension == "tgz" {
+            return Some("source".to_string());
+        };
+
+        let segment: String = segment.to_string();
+        match segment.as_ref() {
+            "embed" => return Some(segment),
+            "webinstall" => return Some(segment),
+            _ => return None,
         }
     }
 
@@ -427,12 +432,12 @@ impl PythonFilename {
             return Some("windows".to_string());
         }
 
-        if ["macos11", "macosx10.9"].contains(&segment) || ["pkg", "dmg"].contains(&extension) {
+        if segment.starts_with("macos") || ["pkg", "dmg"].contains(&extension) {
             return Some("macos".to_string());
         }
 
         if extension == "tgz" {
-            return Some("linux".to_string());
+            return Some("any".to_string());
         }
         None
     }
@@ -473,7 +478,7 @@ impl PythonFilename {
             let is_name: bool = Self::is_name(&segment);
             let is_version: Option<SemanticVersion> = Self::is_version(&segment);
             let is_architecture: bool = Self::is_architecture(&segment);
-            let is_package_type: bool = Self::is_package_type(&segment);
+            let is_package_type: Option<String> = Self::is_package_type(&segment, extension);
             let is_platform: Option<String> = Self::is_platform(&segment, extension);
 
             if is_name {
@@ -487,9 +492,8 @@ impl PythonFilename {
                 let segment: String = segment.clone();
                 architecture = segment;
             }
-            if is_package_type {
-                let segment: String = segment.clone();
-                package_type = segment;
+            if is_package_type.is_some() {
+                package_type = is_package_type.unwrap();
             }
             if is_platform.is_some() {
                 platform = Some(is_platform.unwrap());

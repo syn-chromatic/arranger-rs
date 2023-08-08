@@ -63,11 +63,11 @@ pub struct PythonDownloadOption {
     #[arg(short = 'A', long = "arch", default_value = "amd64")]
     architecture: String,
 
-    /// Specify Platform: [windows, macos, linux]
+    /// Specify Platform: [windows, macos, any]
     #[arg(short = 'P', long = "platform", default_value = "windows")]
     platform: String,
 
-    /// Specify Package Type: [standard, webinstall, embed]
+    /// Specify Package Type: [standard, webinstall, embed, source]
     #[arg(short = 'T', long = "package-type", default_value = "standard")]
     package_type: String,
 }
