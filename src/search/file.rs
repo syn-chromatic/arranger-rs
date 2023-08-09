@@ -38,7 +38,26 @@ impl SearchProgress {
         self.match_counter += 1;
     }
 
-    pub fn print_progress(&mut self) {
+    pub fn show_progress(&mut self) {
+        if self.search_counter % 100 == 0 {
+            self.print_progress();
+        }
+    }
+
+    pub fn finalize(&mut self) {
+        self.print_progress();
+        println!();
+    }
+
+    pub fn reset(&mut self) {
+        self.search_counter = 0;
+        self.match_counter = 0;
+        self.previous_length = 0;
+    }
+}
+
+impl SearchProgress {
+    fn print_progress(&mut self) {
         let match_string: String = self.match_counter.to_string();
         let search_string: String = self.search_counter.to_string();
         let parts: [&str; 5] = [
@@ -65,19 +84,6 @@ impl SearchProgress {
         self.terminal.write_color(&fill_string, WhiteANSI);
     }
 
-    pub fn print_finalize(&mut self) {
-        self.print_progress();
-        println!();
-    }
-
-    pub fn reset(&mut self) {
-        self.search_counter = 0;
-        self.match_counter = 0;
-        self.previous_length = 0;
-    }
-}
-
-impl SearchProgress {
     fn get_fill(&self, string: &str) -> usize {
         let previous_length: isize = self.previous_length as isize;
         let current_length: isize = string.len() as isize;
@@ -165,7 +171,7 @@ impl FileSearch {
         self.print_search_initialize(&root);
         let mut search_progress: SearchProgress = SearchProgress::new();
         self.search(&root, &mut roots, &mut files, &mut search_progress);
-        search_progress.print_finalize();
+        search_progress.finalize();
         files
     }
 }
@@ -352,7 +358,7 @@ impl FileSearch {
             let entry_path: Option<PathBuf> = self.get_entry_path(&entry);
 
             if let Some(path) = entry_path {
-                search_progress.print_progress();
+                search_progress.show_progress();
 
                 if path.is_file() {
                     let is_match: bool = self.handle_file(&path, files, search_progress);
