@@ -40,19 +40,29 @@ impl PythonCreateEnvCommand {
     }
 
     pub fn execute_command(&self) {
+        let terminal: Terminal = Terminal::new();
         let mut version: SemanticVersion = self.option.version.clone();
         let data_dir: Option<PathBuf> = dirs::data_local_dir();
+
+        let version_string: String = version.get_2p_string();
+        let string: String = format!("Creating Python {} Environment..", version_string);
+        terminal.writeln_color(&string, YellowANSI);
 
         if let Some(data_dir) = data_dir {
             let base_path_buf: PathBuf = data_dir.join("Programs/Python");
             let base_path: WPath = WPath::from_path_buf(&base_path_buf);
             version.set_patch(0);
 
-            let environment: Option<PythonEnvironment> = PythonEnvironment::new(base_path, version);
+            let environment: Option<PythonEnvironment> =
+                PythonEnvironment::new(&base_path, &version);
 
             if let Some(environment) = environment {
                 let virtual_env: VirtualEnv = VirtualEnv::new(&environment);
                 virtual_env.create_environment();
+            } else {
+                let string: String =
+                    format!("Couldn't find Python {} installation.", version_string);
+                terminal.writeln_color(&string, RedANSI);
             }
         }
     }
@@ -80,15 +90,22 @@ impl PythonFixEnvCommand {
         let venv_cfgs: Vec<VirtualEnvCFG> = venv_search.find_configs();
 
         for venv_cfg in venv_cfgs {
+            let mut environment_directory: WPath = venv_cfg.file.clone().into();
+            environment_directory.to_directory();
+
+            let directory_string: String = format!("{:?}", environment_directory);
+            let parts: [&str; 2] = ["Attempting Environment Fix: ", &directory_string];
+            terminal.writeln_2p_primary(&parts, YellowANSI);
+
             let version: SemanticVersion = venv_cfg.version_info;
             let cfg_file: WPath = venv_cfg.file;
-            self.create_env(&cfg_file, &version);
+            self.create_env(&cfg_file, &version, &terminal);
         }
     }
 }
 
 impl PythonFixEnvCommand {
-    fn create_env(&self, path: &WPath, version: &SemanticVersion) {
+    fn create_env(&self, path: &WPath, version: &SemanticVersion, terminal: &Terminal) {
         let data_dir: Option<PathBuf> = dirs::data_local_dir();
         let mut version: SemanticVersion = version.clone();
         version.set_patch(0);
@@ -97,11 +114,17 @@ impl PythonFixEnvCommand {
             let base_path_buf: PathBuf = data_dir.join("Programs/Python");
             let base_path: WPath = WPath::from_path_buf(&base_path_buf);
 
-            let environment: Option<PythonEnvironment> = PythonEnvironment::new(base_path, version);
+            let environment: Option<PythonEnvironment> =
+                PythonEnvironment::new(&base_path, &version);
 
             if let Some(environment) = environment {
                 let virtual_env: VirtualEnv = VirtualEnv::new(&environment);
                 virtual_env.create_environment_in_path(path);
+            } else {
+                let version_string: String = version.get_2p_string();
+                let string: String =
+                    format!("Couldn't find Python {} installation.\n", version_string);
+                terminal.writeln_color(&string, RedANSI);
             }
         }
     }

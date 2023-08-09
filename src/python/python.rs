@@ -8,10 +8,11 @@ pub struct PythonEnvironment {
 }
 
 impl PythonEnvironment {
-    pub fn new(base_path: WPath, version: SemanticVersion) -> Option<Self> {
+    pub fn new(base_path: &WPath, version: &SemanticVersion) -> Option<Self> {
         let python_path: Option<WPath> = Self::get_python_path(&base_path, &version);
 
         if let Some(python_path) = python_path {
+            let version: SemanticVersion = version.clone();
             let environment: PythonEnvironment = PythonEnvironment {
                 version,
                 python_path,

@@ -100,12 +100,6 @@ impl VirtualEnv {
         let canonical_string: Option<String> = path.get_canonical_string();
 
         if let Some(canonical_string) = canonical_string {
-            let version_string: String = self.environment.version.get_2p_string();
-            println!(
-                "\nCreating Virtual Environment for Python {} in: {}",
-                version_string, canonical_string
-            );
-
             let venv_args: [&str; 3] = ["-m", "virtualenv", &canonical_string];
             self.execute_environment_command(&venv_args);
         }
