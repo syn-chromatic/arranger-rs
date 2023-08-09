@@ -5,24 +5,25 @@ Arranger is a command-line utility designed to streamline development workflows 
 ___
 ### `➢` Features
 #### `⤷` Python Tools
-- **venv**: Create a virtual environment
-- **fix-venv**: Find and repair virtual environment path issues
-- **packages**: Find and list the packages installed in virtual environments
-- **download**: Download any version of Python from their FTP server
+
+| Feature                      | Description                                                         |
+|------------------------------|---------------------------------------------------------------------|
+| [**venv**](#venv)            | Set up a new virtual environment                                    |
+| [**fix-venv**](#fix-venv)    | Find and resolve path issues in virtual environments                |
+| [**packages**](#packages)    | Find and list packages within virtual environments                  |
+| [**download**](#download)    | Fetch specific Python versions from the official FTP                |
 
 #### `⤷` Rust Tools
-- **vscode-tasks**: Generate tasks for VSCode
 
-___
-### `➢` Example
-![arranger](https://github.com/syn-chromatic/arranger-rs/assets/68112904/e581e0f7-2921-475b-a123-f52251bdbd65)
-
+| Feature                             | Description                                      |
+|-------------------------------------|--------------------------------------------------|
+| [**vscode-tasks**](#vscode-tasks)   | Generate VSCode task configurations              |
 
 ___
 ### `➢` **Usage**
 
 #### `⤷` **Python Tools**
-  - **venv**
+  - [**venv**](#venv)
     ```
     Options:
     -V/--version : Specify Python version
@@ -30,7 +31,7 @@ ___
     Example: arranger python venv -V 3.9
     ```
 
-  - **fix-venv**
+  - [**fix-venv**](#fix-venv)
     ```
     Options:
     -D/--deep-search : Perform a deep search
@@ -38,7 +39,7 @@ ___
     Example: arranger python fix-venv
     ```
 
-  - **packages**
+  - [**packages**](#packages)
     ```
     Options:
     -S/--save-packages : Creates a packages.txt file in each environment
@@ -46,7 +47,7 @@ ___
     Example: arranger python packages -S
     ```
 
-  - **download**
+  - [**download**](#download)
     ```
     Options:
     -V/--version : Specify Python version
@@ -71,10 +72,14 @@ ___
     ```
 
 #### `⤷` **Rust Tools**
-  - **vscode-tasks**
+  - [**vscode-tasks**](#vscode-tasks)
     ```
     Options:
-    -R/--run-task : Generate Run Task
+    -R/--run-task : Generate VSCode run task configuration
 
     Example: arranger rust vscode-tasks -R
     ```
+
+___
+### `➢` Example
+![arranger](https://github.com/syn-chromatic/arranger-rs/assets/68112904/e581e0f7-2921-475b-a123-f52251bdbd65)
