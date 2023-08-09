@@ -30,7 +30,7 @@ ___
     Example: arranger python venv -V 3.9
     ```
 
-  - [**fix-venv**](#fix-venv)
+  - <a name="fix-venv"></a>**fix-venv**
     ```
     Options:
     -D/--deep-search : Perform a deep search
@@ -38,7 +38,7 @@ ___
     Example: arranger python fix-venv
     ```
 
-  - [**packages**](#packages)
+  - <a name="packages"></a>**packages**
     ```
     Options:
     -S/--save-packages : Creates a packages.txt file in each environment
@@ -46,7 +46,7 @@ ___
     Example: arranger python packages -S
     ```
 
-  - [**download**](#download)
+  - <a name="download"></a>**download**
     ```
     Options:
     -V/--version : Specify Python version
@@ -71,7 +71,7 @@ ___
     ```
 
 #### `⤷` **Rust Tools**
-  - [**vscode-tasks**](#vscode-tasks)
+  - <a name="vscode-tasks"></a>**vscode-tasks**
     ```
     Options:
     -R/--run-task : Generate VSCode run task configuration
