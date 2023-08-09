@@ -21,9 +21,8 @@ ___
 
 ___
 ### `➢` **Usage**
-<a name="python-tools"></a>
 #### `⤷` **Python Tools**
-  - [**venv**](#python-tools)
+  - <a name="venv"></a>**venv**
     ```
     Options:
     -V/--version : Specify Python version
