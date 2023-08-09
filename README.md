@@ -45,6 +45,7 @@ ___
   - <a name="packages"></a>**packages**
     ```
     Options:
+    -D/--deep-search : Perform a deep search
     -S/--save-packages : Creates a packages.txt file in each environment
 
     Examples: 
