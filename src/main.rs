@@ -15,6 +15,7 @@ use crate::commands::PythonFixEnvCommand;
 use crate::commands::PythonPackagesCommand;
 use crate::general::version::SemanticVersion;
 use crate::rust::tasks::generate_rust_run_task;
+use crate::utils::print_options;
 
 #[derive(Debug, Parser)]
 #[command(name = "Arranger")]
@@ -39,13 +40,13 @@ struct PythonCommand {
 
 #[derive(Debug, Subcommand)]
 enum PythonSubCommands {
-    #[command(about = "Create Virtual Environment", name = "venv")]
+    #[command(about = "Create Virtual Environment Command", name = "venv")]
     VirtualEnv(VirtualEnvOption),
-    #[command(about = "Fix Virtual Environments", name = "fix-venv")]
+    #[command(about = "Fix Virtual Environments Command", name = "fix-venv")]
     FixVirtualEnvironments(FixVirtualEnvOption),
-    #[command(about = "Environment Packages", name = "packages")]
+    #[command(about = "Environment Packages Command", name = "packages")]
     EnvPackages(PackagesOption),
-    #[command(about = "Download Python Version", name = "download")]
+    #[command(about = "Python Download Command", name = "download")]
     PythonDownload(PythonDownloadOption),
 }
 
@@ -109,7 +110,7 @@ struct RustCommand {
 
 #[derive(Debug, Subcommand)]
 enum RustSubCommands {
-    #[command(about = "Generate VSCode Tasks", name = "vscode-tasks")]
+    #[command(about = "Generate VSCode Tasks Command", name = "vscode-tasks")]
     GenerateTasks(GenerateTasksOption),
 }
 
@@ -152,7 +153,8 @@ async fn main() {
             },
         },
         Err(opt) => {
-            println!("Error: {}", opt.to_string());
+            let opt_string: String = opt.to_string();
+            print_options(&opt_string);
         }
     }
 }
