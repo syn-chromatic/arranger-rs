@@ -27,7 +27,9 @@ ___
     Options:
     -V/--version : Specify Python version
 
-    Example: arranger python venv -V 3.9
+    Example:
+    # Create Virtual Environemnt for Python 3.9
+    arranger python venv -V 3.9
     ```
 
   - <a name="fix-venv"></a>**fix-venv**
@@ -35,7 +37,9 @@ ___
     Options:
     -D/--deep-search : Perform a deep search
 
-    Example: arranger python fix-venv
+    Example: 
+    # Search for environments and fix path issues
+    arranger python fix-venv
     ```
 
   - <a name="packages"></a>**packages**
@@ -43,6 +47,11 @@ ___
     Options:
     -S/--save-packages : Creates a packages.txt file in each environment
 
+    Examples: 
+    # Search for environments, and list the packages installed
+    Example: arranger python packages
+
+    # Search for environments, list the packages, and save
     Example: arranger python packages -S
     ```
 
