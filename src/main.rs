@@ -6,8 +6,11 @@ mod rust;
 mod search;
 mod utils;
 
+use std::io;
+
 use clap::error::Error as ClapError;
 use clap::{Parser, Subcommand};
+use enable_ansi_support::enable_ansi_support;
 
 use crate::commands::PythonCreateEnvCommand;
 use crate::commands::PythonDLCommand;
@@ -123,6 +126,12 @@ pub struct GenerateTasksOption {
 
 #[tokio::main]
 async fn main() {
+    let ansi_support: Result<(), io::Error> = enable_ansi_support();
+
+    if let Err(_) = ansi_support {
+        println!("WARNING: ANSI Color Code support is not supported on this platform.");
+    }
+
     let opt: Result<Cli, ClapError> = Cli::try_parse();
     match opt {
         Ok(opt) => match opt.command {

@@ -30,12 +30,13 @@ impl Pip {
 
     pub fn install_package(&self, package: &str) -> bool {
         let python_executable: WPath = self.environment.get_python_executable();
-        let args: [&str; 5] = [
+        let args: [&str; 6] = [
             "-m",
             "pip",
             "install",
             package,
             "--disable-pip-version-check",
+            "--no-warn-script-location",
         ];
 
         let command: CommandExecute = CommandExecute::new();
