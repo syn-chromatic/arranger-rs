@@ -5,13 +5,13 @@ Arranger is a command-line utility designed to streamline development workflows 
 ___
 ## `➢` Features
 ### `⤷` Python Tools
-- **venv**: Create a virtual environment for any version.
-- **fix-venv**: Find and repair virtual environment path issues.
-- **packages**: Find and list the packages installed in virtual environments.
-- **download**: Download any version of Python from their FTP server.
+- **venv**: Create a virtual environment
+- **fix-venv**: Find and repair virtual environment path issues
+- **packages**: Find and list the packages installed in virtual environments
+- **download**: Download any version of Python from their FTP server
 
 ### `⤷` Rust Tools
-- **vscode-tasks**: Generate tasks for VSCode.
+- **vscode-tasks**: Generate tasks for VSCode
 
 ___
 ## `➢` Example
