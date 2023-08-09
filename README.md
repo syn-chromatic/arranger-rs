@@ -6,8 +6,8 @@ ___
 ## `➢` Features
 ### `⤷` Python Tools
 - **venv**: Create a virtual environment for any version.
-- **fix-venv**: Repairs virtual environment path issues.
-- **packages**: List the packages installed in an environment, and generate a requirements file.
+- **fix-venv**: Find and repair virtual environment path issues.
+- **packages**: Find and list the packages installed in virtual environments.
 - **download**: Download any version of Python from their FTP server.
 
 ### `⤷` Rust Tools
