@@ -45,8 +45,6 @@ impl PythonCreateEnvCommand {
         let data_dir: Option<PathBuf> = dirs::data_local_dir();
 
         let version_string: String = version.get_2p_string();
-        let string: String = format!("Creating Python {} Environment..", version_string);
-        terminal.writeln_color(&string, YellowANSI);
 
         if let Some(data_dir) = data_dir {
             let base_path_buf: PathBuf = data_dir.join("Programs/Python");

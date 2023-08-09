@@ -5,6 +5,9 @@ use crate::parsers::cfg_parser::CFGLine;
 use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
 
+use crate::general::terminal::Terminal;
+use crate::general::terminal::YellowANSI;
+
 #[derive(Debug)]
 pub struct VirtualEnvCFG {
     pub home: WPath,
@@ -81,12 +84,17 @@ impl VirtualEnvCFG {
 
 pub struct VirtualEnv {
     environment: PythonEnvironment,
+    terminal: Terminal,
 }
 
 impl VirtualEnv {
     pub fn new(environment: &PythonEnvironment) -> Self {
         let environment: PythonEnvironment = environment.clone();
-        VirtualEnv { environment }
+        let terminal = Terminal::new();
+        VirtualEnv {
+            environment,
+            terminal,
+        }
     }
 
     pub fn create_environment(&self) {
@@ -126,15 +134,19 @@ impl VirtualEnv {
         }
 
         if !venv_installed {
-            println!("Installing Virtual Environment Package..");
-            pip.install_package(package_name);
+            self.print_installing_package();
+            let state: bool = pip.install_package(package_name);
+            if !state {
+                return;
+            }
         }
 
+        self.print_creating_environment();
         let command: CommandExecute = CommandExecute::new();
         let response: Option<CommandResponse> =
             command.execute_command(&python_executable, &venv_args);
         if let Some(response) = response {
-            println!("{:?}", response);
+            response.print();
         }
     }
 
@@ -143,5 +155,16 @@ impl VirtualEnv {
         let (major, minor): (usize, usize) = version.get_2p_version();
         let name: String = format!("pyenv{}{}", major, minor);
         name
+    }
+
+    fn print_installing_package(&self) {
+        let string: &str = "Installing Virtual Environment Package..\n";
+        self.terminal.writeln_color(string, YellowANSI);
+    }
+
+    fn print_creating_environment(&self) {
+        let version_string: String = self.environment.version.get_2p_string();
+        let string: String = format!("Creating Python {} Environment..\n", version_string);
+        self.terminal.writeln_color(&string, YellowANSI);
     }
 }

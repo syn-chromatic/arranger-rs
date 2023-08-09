@@ -28,7 +28,7 @@ impl Pip {
         None
     }
 
-    pub fn install_package(&self, package: &str) {
+    pub fn install_package(&self, package: &str) -> bool {
         let python_executable: WPath = self.environment.get_python_executable();
         let args: [&str; 5] = [
             "-m",
@@ -41,9 +41,12 @@ impl Pip {
         let command: CommandExecute = CommandExecute::new();
         let response: Option<CommandResponse> = command.execute_command(&python_executable, &args);
         if let Some(response) = response {
-            println!("STDOUT: {}", response.get_stdout());
-            println!("STDERR: {}", response.get_stderr());
+            response.print();
+            if response.get_status().success() {
+                return true;
+            }
         }
+        false
     }
 }
 

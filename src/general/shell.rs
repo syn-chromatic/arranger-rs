@@ -3,14 +3,15 @@ use std::process::Output;
 use std::process::{Command, ExitStatus};
 use std::string::FromUtf8Error;
 
-use core::fmt::{Debug, Formatter};
-
 use crate::general::path::WPath;
+use crate::general::terminal::Terminal;
+use crate::general::terminal::{GreenANSI, RedANSI, YellowANSI};
 
 pub struct CommandResponse {
     stdout: String,
     stderr: String,
     status: ExitStatus,
+    terminal: Terminal,
 }
 
 impl CommandResponse {
@@ -22,11 +23,13 @@ impl CommandResponse {
         if let (Ok(stdout), Ok(stderr)) = (stdout, stderr) {
             let stdout: String = stdout.trim().to_string();
             let stderr: String = stderr.trim().to_string();
+            let terminal: Terminal = Terminal::new();
 
             let response: CommandResponse = CommandResponse {
                 stdout,
                 stderr,
                 status,
+                terminal,
             };
 
             return Some(response);
@@ -45,16 +48,24 @@ impl CommandResponse {
     pub fn get_status(&self) -> &ExitStatus {
         &self.status
     }
-}
 
-impl Debug for CommandResponse {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        let separator: String = "=".repeat(30);
-        let string: String = format!(
-            "{}\n{}\n{}\n{}\n{}\n",
-            separator, self.stdout, self.stderr, self.status, separator,
-        );
-        f.write_str(&string)
+    pub fn print(&self) {
+        let exit_code: Option<i32> = self.status.code();
+        let separator: String = "-".repeat(10);
+        if let Some(exit_code) = exit_code {
+            if exit_code == 0 && self.stderr.is_empty() {
+                let string: String = format!("{}", self.stdout);
+                self.terminal.writeln_color(&string, GreenANSI);
+                self.terminal.writeln_color(&separator, YellowANSI);
+                println!();
+                return;
+            }
+        }
+
+        let string: String = format!("{}", self.stderr);
+        self.terminal.writeln_color(&string, RedANSI);
+        self.terminal.writeln_color(&separator, YellowANSI);
+        println!();
     }
 }
 
