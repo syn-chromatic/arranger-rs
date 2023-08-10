@@ -100,9 +100,13 @@ pub struct PackagesOption {
     #[arg(short = 'D', long = "deep-search")]
     deep_search: bool,
 
-    /// Create package list for each environment
-    #[arg(short = 'S', long = "save-packages", default_value = "false")]
-    save_packages: bool,
+    /// Create package list for each environment (packages.txt)
+    #[arg(short = 'S', long = "save", default_value = "false")]
+    save: bool,
+
+    /// Distill packages by mutual dependencies (distilled_packages.txt)
+    #[arg(short = 'X', long = "distill", default_value = "false")]
+    distill: bool,
 }
 
 #[derive(Debug, Parser)]

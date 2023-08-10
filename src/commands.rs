@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs::File;
-use std::fs::ReadDir;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
@@ -22,7 +21,7 @@ use crate::general::path::WPath;
 use crate::general::version::SemanticVersion;
 use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
-use crate::python::pip::{PipPackage, PipPackageParser};
+use crate::python::pip::{PipMetadata, PipPackage, PipPackageParser};
 use crate::python::python::PythonEnvironment;
 use crate::python::python_ftp::PythonFTPRetriever;
 use crate::python::virtualenv::VirtualEnv;
@@ -119,66 +118,92 @@ impl PythonFixEnvCommand {
 
 pub struct PythonPackagesCommand {
     option: PackagesOption,
+    terminal: Terminal,
 }
 
 impl PythonPackagesCommand {
     pub fn new(option: PackagesOption) -> Self {
-        PythonPackagesCommand { option }
+        let terminal: Terminal = Terminal::new();
+        PythonPackagesCommand { option, terminal }
     }
 
     pub fn execute_command(&self) {
         let deep_search: bool = self.option.deep_search;
-        let save_packages: bool = self.option.save_packages;
+        let save: bool = self.option.save;
+        let distilled: bool = self.option.distill;
 
-        let terminal: Terminal = Terminal::new();
-        let parameters: String = format!("Deep Search: [{}]", deep_search);
+        let parameters: String =
+            format!("Deep Search: [{}] | Distill: [{}]", deep_search, distilled);
         let parts: [&str; 2] = ["Search Parameters: ", &parameters];
         let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
-        terminal.writeln_color_p(&parts, &colors);
+        self.terminal.writeln_color_p(&parts, &colors);
 
         let venv_search: VirtualEnvSearch = VirtualEnvSearch::new(deep_search);
         let venv_cfgs: Vec<VirtualEnvCFG> = venv_search.find_configs();
 
-        for venv_cfg in venv_cfgs {
+        for (idx, venv_cfg) in venv_cfgs.iter().enumerate() {
             let env_dir: WPath = venv_cfg.get_environment_directory();
-            let package_parser: PipPackageParser = self.parse_packages(&env_dir);
-            let packages: &Vec<PipPackage> = package_parser.get_packages();
 
-            let string: String = format!("Environment: {:?}", env_dir);
-            terminal.writeln_color(&string, YellowANSI);
+            let packages: Result<Vec<PipPackage>, io::Error> =
+                self.get_packages_from_option(&env_dir);
 
-            self.list_packages(&packages);
+            if let Ok(packages) = packages {
+                let string: String = format!("Environment: {:?}", env_dir);
+                self.terminal.writeln_color(&string, YellowANSI);
 
-            if save_packages {
-                self.save_packages(&env_dir, packages);
+                self.list_packages(&packages);
+
+                if save {
+                    self.save_packages(&env_dir, &packages);
+                }
+
+                if idx != (venv_cfgs.len() - 1) {
+                    println!()
+                }
             }
-
-            println!()
         }
     }
 }
 
 impl PythonPackagesCommand {
-    fn parse_packages(&self, env_dir: &WPath) -> PipPackageParser {
-        let mut package_parser: PipPackageParser = PipPackageParser::new();
-        let packages_dir: WPath = env_dir.join("Lib/site-packages/");
+    fn get_filename_from_option(&self) -> &str {
+        let distill: bool = self.option.distill;
+        let filename: &str = if distill {
+            "distilled_packages.txt"
+        } else {
+            "packages.txt"
+        };
+        filename
+    }
 
-        let read_dir: Result<ReadDir, io::Error> = packages_dir.read_dir();
-        if let Ok(read_dir) = read_dir {
-            for entry in read_dir {
-                if let Ok(entry) = entry {
-                    let entry_path: PathBuf = entry.path();
-                    if entry_path.is_dir() {
-                        let entry_name: Option<&str> =
-                            entry_path.file_name().unwrap_or_default().to_str();
-                        if let Some(entry_name) = entry_name {
-                            package_parser.parse(entry_name);
-                        }
-                    }
-                }
-            }
-        }
-        package_parser
+    fn get_packages_from_option(&self, env_dir: &WPath) -> Result<Vec<PipPackage>, io::Error> {
+        let distill: bool = self.option.distill;
+        let packages: Result<Vec<PipPackage>, io::Error> = if distill {
+            self.get_distilled_packages(&env_dir)
+        } else {
+            self.get_packages(&env_dir)
+        };
+        packages
+    }
+
+    fn get_packages(&self, env_dir: &WPath) -> Result<Vec<PipPackage>, io::Error> {
+        let packages_dir: WPath = env_dir.join("Lib/site-packages/");
+        let package_parser: PipPackageParser = PipPackageParser::new(&packages_dir);
+
+        let packages: Vec<PipPackage> = package_parser.get_packages()?;
+
+        Ok(packages)
+    }
+
+    fn get_distilled_packages(&self, env_dir: &WPath) -> Result<Vec<PipPackage>, io::Error> {
+        let packages_dir: WPath = env_dir.join("Lib/site-packages/");
+        let package_parser: PipPackageParser = PipPackageParser::new(&packages_dir);
+
+        let mut packages: Vec<PipPackage> = package_parser.get_packages()?;
+        let metadata: Vec<PipMetadata> = package_parser.get_metadata(&packages);
+        package_parser.distill_packages(&mut packages, &metadata);
+
+        Ok(packages)
     }
 
     fn list_packages(&self, packages: &Vec<PipPackage>) {
@@ -186,10 +211,15 @@ impl PythonPackagesCommand {
             let package_string: String = package.get_string();
             println!("{}", package_string);
         }
+
+        let packages_length: String = packages.len().to_string();
+        let parts: [&str; 2] = ["Total Packages: ", &packages_length];
+        self.terminal.writeln_2p_primary(&parts, YellowANSI);
     }
 
     fn save_packages(&self, env_dir: &WPath, packages: &Vec<PipPackage>) {
-        let file_path: WPath = env_dir.join("packages.txt");
+        let filename: &str = self.get_filename_from_option();
+        let file_path: WPath = env_dir.join(filename);
         let mut file: File = File::create(&file_path).expect("Could not create file");
 
         for package in packages {

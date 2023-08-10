@@ -1,3 +1,11 @@
+use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
+use std::fs::File;
+use std::fs::ReadDir;
+use std::io;
+use std::io::BufRead;
+use std::path::PathBuf;
+
 use crate::general::path::WPath;
 use crate::general::shell::{CommandExecute, CommandResponse};
 use crate::general::version::SemanticVersion;
@@ -192,54 +200,272 @@ impl PipShow {
     }
 }
 
-pub struct PipPackage {
+pub struct PipMetadata {
+    package: PipPackage,
+    requires: HashMap<String, HashSet<PipPackageName>>,
+}
+
+impl PipMetadata {
+    pub fn new(package: &PipPackage, requires: &HashMap<String, HashSet<PipPackageName>>) -> Self {
+        let package: PipPackage = package.clone();
+        let requires: HashMap<String, HashSet<PipPackageName>> = requires.clone();
+
+        PipMetadata { package, requires }
+    }
+
+    pub fn get_package(&self) -> &PipPackage {
+        &self.package
+    }
+
+    pub fn get_requires(&self) -> &HashMap<String, HashSet<PipPackageName>> {
+        &self.requires
+    }
+}
+
+struct PipMetadataParser;
+
+impl PipMetadataParser {
+    pub fn new() -> Self {
+        PipMetadataParser
+    }
+
+    fn parse_requires(
+        &self,
+        reader: io::BufReader<File>,
+    ) -> HashMap<String, HashSet<PipPackageName>> {
+        let mut flag_name: String = "base".to_string();
+        let mut requires: HashMap<String, HashSet<PipPackageName>> = HashMap::new();
+        let mut package_names: HashSet<PipPackageName> = HashSet::new();
+        let mut requires_begin: bool = false;
+        let requires_dist: &str = "Requires-Dist:";
+        let provides_extra: &str = "Provides-Extra:";
+
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                if line.starts_with(provides_extra) && !requires_begin {
+                    flag_name = self.parse_flag_name(&line, provides_extra);
+                } else if line.starts_with(&provides_extra) && requires_begin {
+                    requires.insert(flag_name.to_string(), package_names.clone());
+                    package_names.clear();
+                    flag_name = self.parse_flag_name(&line, provides_extra);
+                } else if line.starts_with(requires_dist) {
+                    requires_begin = true;
+                    let name: PipPackageName = self.parse_requires_name(&line, requires_dist);
+                    package_names.insert(name);
+                } else if requires_begin && line.is_empty() {
+                    requires.insert(flag_name.to_string(), package_names.clone());
+                    package_names.clear();
+                    break;
+                }
+            }
+        }
+
+        if !package_names.is_empty() {
+            requires.insert(flag_name.to_string(), package_names.clone());
+        }
+
+        requires
+    }
+}
+
+impl PipMetadataParser {
+    fn parse_flag_name(&self, line: &str, provides_extra: &str) -> String {
+        let line: &str = line.trim_start_matches(provides_extra);
+        let line: &str = line.trim();
+        let provides_name: String = line.to_string();
+        provides_name
+    }
+
+    fn parse_requires_name(&self, line: &str, requires_dist: &str) -> PipPackageName {
+        let line: &str = line.trim_start_matches(requires_dist);
+        let line: &str = line.trim();
+        let mut chars: Vec<char> = Vec::new();
+        for character in line.chars() {
+            if character.is_whitespace() {
+                break;
+            }
+            chars.push(character);
+        }
+        let string: String = chars.into_iter().collect();
+        let name: PipPackageName = PipPackageName::new(&string);
+        name
+    }
+}
+
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+pub struct PipPackageName {
     name: String,
+}
+impl PipPackageName {
+    pub fn new(name: &str) -> Self {
+        let name: String = name.replace("_", "-").to_lowercase();
+        PipPackageName { name }
+    }
+
+    pub fn get_string(&self) -> &str {
+        &self.name
+    }
+}
+
+#[derive(Clone)]
+pub struct PipPackage {
+    name: PipPackageName,
     version: SemanticVersion,
+    path: WPath,
 }
 
 impl PipPackage {
-    pub fn new(name: String, version: SemanticVersion) -> Self {
-        PipPackage { name, version }
+    pub fn new(name: PipPackageName, version: SemanticVersion, path: WPath) -> Self {
+        PipPackage {
+            name,
+            version,
+            path,
+        }
+    }
+
+    pub fn get_name(&self) -> &PipPackageName {
+        &self.name
+    }
+
+    pub fn get_name_string(&self) -> &str {
+        self.name.get_string()
+    }
+
+    pub fn get_version(&self) -> &SemanticVersion {
+        &self.version
+    }
+
+    pub fn get_path(&self) -> &WPath {
+        &self.path
     }
 
     pub fn get_string(&self) -> String {
         let version_string: String = self.version.get_string();
-        let string: String = format!("Name: {} | Version: {}", self.name, version_string);
+        let name: &str = self.name.get_string();
+        let string: String = format!("Name: {} | Version: {}", name, version_string);
         string
     }
 
     pub fn get_requirement_string(&self) -> String {
         let version_string: String = self.version.get_string();
-        let string: String = format!("{}=={}", self.name, version_string);
+        let name: &str = self.name.get_string();
+        let string: String = format!("{}=={}", name, version_string);
         string
     }
 }
 
+impl Debug for PipPackage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PipPackage")
+            .field("name", &self.name.get_string())
+            .field("version", &self.version)
+            .field("path", &self.path)
+            .finish()
+    }
+}
+
 pub struct PipPackageParser {
-    packages: Vec<PipPackage>,
+    packages_dir: WPath,
 }
 
 impl PipPackageParser {
-    pub fn new() -> Self {
-        let packages: Vec<PipPackage> = Vec::new();
-        PipPackageParser { packages }
+    pub fn new(packages_dir: &WPath) -> Self {
+        let packages_dir = packages_dir.clone();
+        PipPackageParser { packages_dir }
     }
 
-    pub fn parse(&mut self, string: &str) {
-        if string.ends_with("dist-info") {
-            let string: &str = string.trim_end_matches("dist-info");
-            let parts: Vec<&str> = string.split("-").collect();
-            let name: String = parts[0].to_string();
-            let version: Option<SemanticVersion> = SemanticVersion::from_string(parts[1]);
+    pub fn get_packages(&self) -> Result<Vec<PipPackage>, io::Error> {
+        let read_dir: ReadDir = self.packages_dir.read_dir()?;
+        let mut packages: Vec<PipPackage> = Vec::new();
+        for entry in read_dir {
+            if let Ok(entry) = entry {
+                let entry_path: PathBuf = entry.path();
+                if entry_path.is_dir() {
+                    let entry_name: Option<&str> =
+                        entry_path.file_name().unwrap_or_default().to_str();
 
-            if let Some(version) = version {
-                let package: PipPackage = PipPackage::new(name, version);
-                self.packages.push(package);
+                    if let Some(entry_name) = entry_name {
+                        self.parse_dir_name(&entry_path, entry_name, &mut packages);
+                    }
+                }
+            }
+        }
+        Ok(packages)
+    }
+
+    pub fn get_metadata(&self, packages: &Vec<PipPackage>) -> Vec<PipMetadata> {
+        let mut metadata: Vec<PipMetadata> = Vec::new();
+
+        for package in packages {
+            let metadata_path: &WPath = &package.path.join("METADATA");
+            if metadata_path.exists() {
+                let file: Result<File, io::Error> = File::open(&metadata_path);
+                if let Ok(file) = file {
+                    let reader: io::BufReader<File> = io::BufReader::new(file);
+                    let metadata_parser: PipMetadataParser = PipMetadataParser::new();
+                    let requires: HashMap<String, HashSet<PipPackageName>> =
+                        metadata_parser.parse_requires(reader);
+
+                    let pip_metadata: PipMetadata = PipMetadata::new(package, &requires);
+                    metadata.push(pip_metadata);
+                }
+            }
+        }
+
+        metadata
+    }
+
+    pub fn distill_packages(&self, packages: &mut Vec<PipPackage>, metadata: &Vec<PipMetadata>) {
+        for meta in metadata {
+            let requires: &HashMap<String, HashSet<PipPackageName>> = meta.get_requires();
+            let base: Option<&HashSet<PipPackageName>> = requires.get("base");
+
+            if let Some(base) = base {
+                self.distill_from_base_dependencies(base, packages);
             }
         }
     }
+}
 
-    pub fn get_packages(&self) -> &Vec<PipPackage> {
-        &self.packages
+impl PipPackageParser {
+    fn distill_from_base_dependencies(
+        &self,
+        base: &HashSet<PipPackageName>,
+        packages: &mut Vec<PipPackage>,
+    ) {
+        let mut to_remove: Vec<usize> = Vec::new();
+        for (idx, package) in packages.iter().enumerate() {
+            if !package.version.qualifier.is_empty() {
+                continue;
+            } else if base.contains(package.get_name()) {
+                to_remove.push(idx);
+            }
+        }
+
+        let mut shift = 0;
+        for idx in to_remove.iter() {
+            packages.remove(*idx - shift);
+            shift += 1
+        }
+    }
+
+    fn parse_dir_name(
+        &self,
+        entry_path: &PathBuf,
+        entry_name: &str,
+        packages: &mut Vec<PipPackage>,
+    ) {
+        if entry_name.ends_with(".dist-info") {
+            let string: &str = entry_name.trim_end_matches(".dist-info");
+            let parts: Vec<&str> = string.split("-").collect();
+            let name: PipPackageName = PipPackageName::new(parts[0]);
+            let version: Option<SemanticVersion> = SemanticVersion::from_string(parts[1]);
+
+            if let Some(version) = version {
+                let path: WPath = entry_path.into();
+                let package: PipPackage = PipPackage::new(name, version, path);
+                packages.push(package);
+            }
+        }
     }
 }

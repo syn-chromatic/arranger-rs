@@ -46,14 +46,18 @@ ___
     ```
     Options:
     -D/--deep-search : Perform a deep search
-    -S/--save-packages : Creates a packages.txt file in each environment
+    -S/--save : Creates a packages file in each environment (packages.txt)
+    -X/--distill : Distills packages by mutual dependencies (distilled_packages.txt)
 
     Examples: 
     # Search for environments, and list the packages installed
     Example: arranger python packages
 
-    # Search for environments, list the packages, and save
+    # Search for environments, list packages, and save
     Example: arranger python packages -S
+
+    # Search for environments, distill packages, list packages, and save
+    Example: arranger python packages -S -X
     ```
 
   - <a name="python-download"></a>**python download**
