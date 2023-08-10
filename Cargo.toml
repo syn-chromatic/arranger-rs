@@ -1,16 +1,25 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [package]
 name = "arranger"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 dirs = "5.0"
-clap = { version = "4.3.16", features = ["derive"] }
-reqwest = "0.11"
-tokio = { version = "1", features = ["full"] }
+hyper-tls = "0.5"
 scraper = "0.17.1"
-serde = { version = "1.0.183", features = ["derive"] }
-serde_json = "1.0.104"
 enable-ansi-support = "0.2.1"
+serde_json = "1.0.104"
+
+clap = { version = "4.3.16", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0.183", features = ["derive"] }
+hyper = { version = "0.14", features = ["full"] }
+
+
+[profile.release]
+opt-level = "z"
+strip = true
+codegen-units = 1

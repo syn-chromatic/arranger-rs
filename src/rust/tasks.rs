@@ -10,7 +10,8 @@ use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
 #[derive(Serialize)]
 struct TaskGroup {
     kind: String,
-    isDefault: bool,
+    #[serde(rename = "isDefault")]
+    is_default: bool,
 }
 
 #[derive(Serialize)]
@@ -18,7 +19,8 @@ struct Task {
     #[serde(rename = "type")]
     task_type: String,
     command: String,
-    problemMatcher: Vec<String>,
+    #[serde(rename = "problemMatcher")]
+    problem_matcher: Vec<String>,
     label: String,
     group: TaskGroup,
 }
@@ -35,11 +37,11 @@ fn get_rust_run_task() -> String {
         tasks: vec![Task {
             task_type: "shell".to_string(),
             command: "cargo run --release".to_string(),
-            problemMatcher: vec!["$rustc".to_string()],
+            problem_matcher: vec!["$rustc".to_string()],
             label: "rust: cargo run".to_string(),
             group: TaskGroup {
                 kind: "build".to_string(),
-                isDefault: true,
+                is_default: true,
             },
         }],
     };

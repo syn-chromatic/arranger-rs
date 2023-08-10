@@ -40,11 +40,8 @@ impl PythonCreateEnvCommand {
     }
 
     pub fn execute_command(&self) {
-        let terminal: Terminal = Terminal::new();
         let mut version: SemanticVersion = self.option.version.clone();
         let data_dir: Option<PathBuf> = dirs::data_local_dir();
-
-        let version_string: String = version.get_2p_string();
 
         if let Some(data_dir) = data_dir {
             let base_path_buf: PathBuf = data_dir.join("Programs/Python");

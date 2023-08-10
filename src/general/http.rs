@@ -1,50 +1,96 @@
-use reqwest;
 use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::io::Write;
+use std::str::FromStr;
 
-pub struct HTTP;
+use hyper::body;
+use hyper::client::Client;
+use hyper::client::HttpConnector;
+use hyper::http;
+use hyper::http::uri;
+use hyper::Body;
+use hyper::Request;
+use hyper::Response;
+use hyper::Uri;
+use hyper_tls::HttpsConnector;
+
+pub struct HTTP {
+    client: Client<HttpsConnector<HttpConnector>>,
+}
 
 impl HTTP {
     pub fn new() -> Self {
-        HTTP {}
+        let https: HttpsConnector<HttpConnector> = HttpsConnector::new();
+        let client: Client<HttpsConnector<HttpConnector>> = Self::get_client(https);
+        HTTP { client }
     }
 
-    pub async fn download_file(&self, url: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let url: reqwest::Url = reqwest::Url::parse(url)?;
-        let file_name: String = self.get_file_name(&url)?;
-        let response: reqwest::Response = self.download(&url).await?;
+    pub async fn download_file(&self, url: &str) -> Result<String, Box<dyn Error>> {
+        let uri: Uri = Uri::from_str(url).map_err(|e| self.map_uri_error(e))?;
+        let file_name: String = self.get_file_name(&uri)?;
+        let response: Response<Body> = self.download(&uri).await?;
         self.write_file(file_name, response).await
+    }
+
+    pub async fn get_response_body(&self, url: &str) -> Result<String, Box<dyn Error>> {
+        let uri: Uri = Uri::from_str(url).map_err(|e| self.map_uri_error(e))?;
+        let resp: Response<Body> = self.client.get(uri).await?;
+        let bytes: body::Bytes = body::to_bytes(resp.into_body()).await?;
+        let resp_string: String = String::from_utf8(bytes.to_vec())?;
+
+        Ok(resp_string)
     }
 }
 
 impl HTTP {
-    async fn download(&self, url: &reqwest::Url) -> Result<reqwest::Response, reqwest::Error> {
-        reqwest::get(url.clone()).await?.error_for_status()
+    async fn download(&self, uri: &Uri) -> Result<hyper::Response<Body>, Box<dyn Error>> {
+        let req: Request<Body> = self.get_request_body(uri).map_err(Box::new)?;
+        let resp: Response<Body> = self.client.request(req).await.map_err(Box::new)?;
+        Ok(resp)
     }
 
     async fn write_file(
         &self,
         file_name: String,
-        response: reqwest::Response,
+        response: hyper::Response<Body>,
     ) -> Result<String, Box<dyn Error>> {
-        let mut dest = File::create(&file_name)?;
-        let bytes = response.bytes().await?;
-        dest.write_all(&bytes)?;
+        let mut file: File = File::create(&file_name)?;
+        let bytes: body::Bytes = body::to_bytes(response.into_body()).await?;
+        file.write_all(&bytes)?;
         Ok(file_name)
     }
 
-    fn get_file_name(&self, url: &reqwest::Url) -> Result<String, io::Error> {
-        url.path_segments()
-            .and_then(|segments| segments.last())
-            .and_then(|name| if name.is_empty() { None } else { Some(name) })
-            .map(|name| name.to_string())
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "Failed to get file name from URL",
-                )
-            })
+    fn get_file_name(&self, uri: &Uri) -> Result<String, io::Error> {
+        let path_segments: Vec<&str> = uri.path().split('/').collect::<Vec<&str>>();
+        let last_segment: Option<&str> = path_segments.last().and_then(|s| Some(*s));
+
+        if let Some(name) = last_segment {
+            if !name.is_empty() {
+                return Ok(name.to_string());
+            }
+        }
+
+        Err(self.get_file_name_error())
+    }
+
+    fn get_client(https: HttpsConnector<HttpConnector>) -> Client<HttpsConnector<HttpConnector>> {
+        Client::builder().build::<_, Body>(https)
+    }
+
+    fn get_request_body(&self, uri: &Uri) -> Result<Request<Body>, http::Error> {
+        Request::get(uri.clone()).body(Body::empty())
+    }
+
+    fn get_file_name_error(&self) -> io::Error {
+        let error: io::Error = io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Failed to get file name from URL",
+        );
+        error
+    }
+
+    fn map_uri_error(&self, error: uri::InvalidUri) -> io::Error {
+        io::Error::new(io::ErrorKind::InvalidInput, error)
     }
 }
