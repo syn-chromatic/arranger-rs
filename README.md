@@ -6,23 +6,23 @@ ___
 ### `➢` Features
 #### `⤷` Python Tools
 
-| Feature                      | Description                                                         |
-|------------------------------|---------------------------------------------------------------------|
-| [**venv**](#venv)            | Set up a new virtual environment                                    |
-| [**fix-venv**](#fix-venv)    | Find and resolve path issues in virtual environments                |
-| [**packages**](#packages)    | Find and list packages within virtual environments                  |
-| [**download**](#download)    | Fetch specific Python versions from the official FTP                |
+| Feature                                    | Description                                                         |
+|--------------------------------------------|---------------------------------------------------------------------|
+| [**python venv**](#python-venv)            | Set up a new virtual environment                                    |
+| [**python fix-venv**](#python-fix-venv)    | Find and resolve path issues in virtual environments                |
+| [**python packages**](#python-packages)    | Find and list packages within virtual environments                  |
+| [**python download**](#python-download)    | Fetch specific Python versions from the official FTP server         |
 
 #### `⤷` Rust Tools
 
-| Feature                             | Description                                      |
-|-------------------------------------|--------------------------------------------------|
-| [**vscode-tasks**](#vscode-tasks)   | Generate VSCode task configurations              |
+| Feature                                       | Description                                      |
+|-----------------------------------------------|--------------------------------------------------|
+| [**rust vscode-tasks**](#rust-vscode-tasks)   | Generate VSCode task configurations              |
 
 ___
 ### `➢` **Usage**
 #### `⤷` **Python Tools**
-  - <a name="venv"></a>**venv**
+  - <a name="python-venv"></a>**python venv**
     ```
     Options:
     -V/--version : Specify Python version
@@ -32,7 +32,7 @@ ___
     arranger python venv -V 3.9
     ```
 
-  - <a name="fix-venv"></a>**fix-venv**
+  - <a name="python-fix-venv"></a>**python fix-venv**
     ```
     Options:
     -D/--deep-search : Perform a deep search
@@ -42,7 +42,7 @@ ___
     arranger python fix-venv
     ```
 
-  - <a name="packages"></a>**packages**
+  - <a name="python-packages"></a>**python packages**
     ```
     Options:
     -D/--deep-search : Perform a deep search
@@ -56,7 +56,7 @@ ___
     Example: arranger python packages -S
     ```
 
-  - <a name="download"></a>**download**
+  - <a name="python-download"></a>**python download**
     ```
     Options:
     -V/--version : Specify Python version
@@ -81,7 +81,7 @@ ___
     ```
 
 #### `⤷` **Rust Tools**
-  - <a name="vscode-tasks"></a>**vscode-tasks**
+  - <a name="rust-vscode-tasks"></a>**rust vscode-tasks**
     ```
     Options:
     -R/--run-task : Generate VSCode run task configuration
