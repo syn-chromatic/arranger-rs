@@ -57,10 +57,6 @@ impl PythonCreateEnvCommand {
             if let Some(environment) = environment {
                 let virtual_env: VirtualEnv = VirtualEnv::new(&environment);
                 virtual_env.create_environment();
-            } else {
-                let string: String =
-                    format!("Couldn't find Python {} installation.", version_string);
-                terminal.writeln_color(&string, RedANSI);
             }
         }
     }
@@ -118,11 +114,6 @@ impl PythonFixEnvCommand {
             if let Some(environment) = environment {
                 let virtual_env: VirtualEnv = VirtualEnv::new(&environment);
                 virtual_env.create_environment_in_path(path);
-            } else {
-                let version_string: String = version.get_2p_string();
-                let string: String =
-                    format!("Couldn't find Python {} installation.\n", version_string);
-                terminal.writeln_color(&string, RedANSI);
             }
         }
     }

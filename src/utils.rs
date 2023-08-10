@@ -32,6 +32,12 @@ pub fn confirm_and_continue() -> bool {
     }
 }
 
+pub fn substring(s: &str, start: usize, end: usize) -> Option<&str> {
+    let start_byte: usize = s.char_indices().nth(start)?.0;
+    let end_byte: usize = s.char_indices().nth(end)?.0;
+    Some(&s[start_byte..end_byte])
+}
+
 pub fn split_once_retain_delim_left<'a>(
     s: &'a str,
     delimiter: &'a str,

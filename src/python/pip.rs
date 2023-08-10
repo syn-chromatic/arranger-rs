@@ -3,19 +3,34 @@ use crate::general::shell::{CommandExecute, CommandResponse};
 use crate::general::version::SemanticVersion;
 use crate::python::python::PythonEnvironment;
 
+use crate::general::terminal::RedANSI;
+use crate::general::terminal::Terminal;
+
+#[derive(Clone)]
 pub struct Pip {
-    environment: PythonEnvironment,
+    pip_version: SemanticVersion,
 }
 
 impl Pip {
-    pub fn new(environment: &PythonEnvironment) -> Self {
-        let environment: PythonEnvironment = environment.clone();
-        Pip { environment }
+    pub fn new(python_executable: &WPath) -> Option<Self> {
+        let pip_version: Option<SemanticVersion> = Self::parse_pip_version(&python_executable);
+        if let Some(pip_version) = pip_version {
+            let pip: Pip = Pip { pip_version };
+            return Some(pip);
+        }
+        let terminal: Terminal = Terminal::new();
+        let string: &str = "Unable to retrieve Pip version.";
+        terminal.writeln_color(&string, RedANSI);
+        None
     }
 
-    pub fn find_package(&self, package: &str) -> Option<PipShow> {
-        let python_executable: WPath = self.environment.get_python_executable();
-        let args: [&str; 5] = ["-m", "pip", "show", package, "--disable-pip-version-check"];
+    pub fn get_pip_version(&self) -> &SemanticVersion {
+        &self.pip_version
+    }
+
+    pub fn find_package(&self, environment: &PythonEnvironment, package: &str) -> Option<PipShow> {
+        let python_executable: &WPath = environment.get_python_executable();
+        let args: Vec<&str> = self.get_find_package_args(package);
         let command: CommandExecute = CommandExecute::new();
         let response: Option<CommandResponse> = command.execute_command(&python_executable, &args);
 
@@ -28,16 +43,9 @@ impl Pip {
         None
     }
 
-    pub fn install_package(&self, package: &str) -> bool {
-        let python_executable: WPath = self.environment.get_python_executable();
-        let args: [&str; 6] = [
-            "-m",
-            "pip",
-            "install",
-            package,
-            "--disable-pip-version-check",
-            "--no-warn-script-location",
-        ];
+    pub fn install_package(&self, environment: &PythonEnvironment, package: &str) -> bool {
+        let python_executable: &WPath = environment.get_python_executable();
+        let args: Vec<&str> = self.get_install_package_args(package);
 
         let command: CommandExecute = CommandExecute::new();
         let response: Option<CommandResponse> = command.execute_command(&python_executable, &args);
@@ -48,6 +56,58 @@ impl Pip {
             }
         }
         false
+    }
+}
+
+impl Pip {
+    fn get_install_package_args<'a>(&self, package: &'a str) -> Vec<&'a str> {
+        let mut args: Vec<&str> = vec![
+            "-m",
+            "pip",
+            "install",
+            package,
+            "--disable-pip-version-check",
+        ];
+
+        if self.pip_version.get_major() > 9 {
+            args.push("--no-warn-script-location");
+        }
+        args
+    }
+
+    fn get_find_package_args<'a>(&self, package: &'a str) -> Vec<&'a str> {
+        let args: Vec<&str> = vec!["-m", "pip", "show", package, "--disable-pip-version-check"];
+        args
+    }
+
+    fn parse_pip_version(python_executable: &WPath) -> Option<SemanticVersion> {
+        let args: [&str; 3] = ["-m", "pip", "--version"];
+        let command: CommandExecute = CommandExecute::new();
+        let response: Option<CommandResponse> = command.execute_command(&python_executable, &args);
+
+        if let Some(response) = response {
+            let stdout: &str = response.get_stdout();
+            let mut chars: Vec<char> = Vec::new();
+            if stdout.starts_with("pip") {
+                for char in stdout.chars() {
+                    if char.is_numeric() & chars.is_empty() {
+                        chars.push(char);
+                    } else if char.is_whitespace() & !chars.is_empty() {
+                        break;
+                    } else if !chars.is_empty() {
+                        chars.push(char)
+                    }
+                }
+            }
+
+            if !chars.is_empty() {
+                let version_string: String = chars.into_iter().collect();
+                let version: Option<SemanticVersion> =
+                    SemanticVersion::from_string(&version_string);
+                return version;
+            }
+        }
+        None
     }
 }
 
@@ -103,6 +163,15 @@ impl PipShow {
         }
     }
 
+    pub fn get_name(&self) -> Option<&str> {
+        if self.name.is_empty() {
+            return None;
+        }
+        Some(&self.name)
+    }
+}
+
+impl PipShow {
     fn auto_parse_set(&mut self, prefix: &str, suffix: &str) {
         let prefix: String = prefix.to_lowercase();
         let suffix: String = suffix.to_string();
@@ -120,19 +189,6 @@ impl PipShow {
             "required-by" => self.required_by = suffix,
             _ => {}
         }
-    }
-
-    pub fn get_name(&self) -> Option<&str> {
-        if self.name.is_empty() {
-            return None;
-        }
-        Some(&self.name)
-    }
-
-    pub fn get_string(&self) -> String {
-        let string = format!("Name: {}\nVersion: {}\nSummary: {}\nHomepage: {}\nAuthor: {}\nAuthor Email: {}\nLicense: {}\nLocation: {}\nRequires: {}\nRequired By: {}",
-    self.name, self.version, self.summary, self.homepage, self.author, self.author_email, self.license, self.location, self.requires, self.required_by);
-        string
     }
 }
 

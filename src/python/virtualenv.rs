@@ -6,7 +6,7 @@ use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
 
 use crate::general::terminal::Terminal;
-use crate::general::terminal::YellowANSI;
+use crate::general::terminal::{RedANSI, YellowANSI};
 
 #[derive(Debug)]
 pub struct VirtualEnvCFG {
@@ -116,12 +116,11 @@ impl VirtualEnv {
 
 impl VirtualEnv {
     fn execute_environment_command(&self, venv_args: &[&str]) {
-        let pip: Pip = Pip::new(&self.environment);
-        let python_executable: WPath = self.environment.get_python_executable();
+        let pip: &Pip = self.environment.get_pip();
+        let python_executable: &WPath = self.environment.get_python_executable();
 
         let package_name: &str = "virtualenv";
-        let pip_show: Option<PipShow> = pip.find_package(package_name);
-
+        let pip_show: Option<PipShow> = pip.find_package(&self.environment, package_name);
         let mut venv_installed: bool = false;
 
         if let Some(pip_show) = pip_show {
@@ -135,7 +134,7 @@ impl VirtualEnv {
 
         if !venv_installed {
             self.print_installing_package();
-            let state: bool = pip.install_package(package_name);
+            let state: bool = pip.install_package(&self.environment, package_name);
             if !state {
                 return;
             }
@@ -151,7 +150,7 @@ impl VirtualEnv {
     }
 
     fn get_environment_name(&self) -> String {
-        let version: &SemanticVersion = &self.environment.version;
+        let version: &SemanticVersion = self.environment.get_python_version();
         let (major, minor): (usize, usize) = version.get_2p_version();
         let name: String = format!("pyenv{}{}", major, minor);
         name
@@ -163,7 +162,8 @@ impl VirtualEnv {
     }
 
     fn print_creating_environment(&self) {
-        let version_string: String = self.environment.version.get_2p_string();
+        let version: &SemanticVersion = self.environment.get_python_version();
+        let version_string: String = version.get_2p_string();
         let string: String = format!("Creating Python {} Environment..\n", version_string);
         self.terminal.writeln_color(&string, YellowANSI);
     }

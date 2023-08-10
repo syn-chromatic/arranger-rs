@@ -2,10 +2,11 @@ use core::fmt::Debug;
 use std::collections::HashSet;
 use std::error::Error;
 use std::io;
-use std::io::Write;
 
 use scraper::{Html, Selector};
 
+use crate::general::terminal::Terminal;
+use crate::general::terminal::YellowANSI;
 use crate::general::version::{PreRelease, SemanticVersion};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -165,10 +166,11 @@ impl PythonFTPRetriever {
         platform: &str,
         package_type: &str,
     ) -> Option<String> {
-        version.set_patch(0);
+        let terminal: Terminal = Terminal::new();
         let mut setup_file: Option<String> = None;
         let mut counter: usize = 0;
         let limit: usize = 50;
+        version.set_patch(0);
 
         while counter <= limit {
             counter += 1;
@@ -176,7 +178,6 @@ impl PythonFTPRetriever {
                 .get_setup_file(&version, arch, platform, package_type)
                 .await;
 
-            io::stdout().flush().unwrap();
             if let Some(_) = file {
                 setup_file = file;
             } else if version.get_patch() == 0 {
@@ -186,8 +187,8 @@ impl PythonFTPRetriever {
                 break;
             }
 
-            print!("\rVersion: {}", version.get_string());
-            io::stdout().flush().unwrap();
+            let parts: [&str; 2] = ["\rVersion: ", &version.get_string()];
+            terminal.write_2p_primary(&parts, YellowANSI);
 
             let patch: usize = version.get_patch();
             version.set_patch(patch + 1);
