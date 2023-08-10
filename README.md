@@ -11,7 +11,7 @@ ___
 | [**python venv**](#python-venv)            | Set up a new virtual environment                                    |
 | [**python fix-venv**](#python-fix-venv)    | Find and resolve path issues in virtual environments                |
 | [**python packages**](#python-packages)    | Find and list packages within virtual environments                  |
-| [**python download**](#python-download)    | Fetch specific Python versions from the official FTP server         |
+| [**python download**](#python-download)    | Fetch Python versions from the official FTP server         |
 
 #### `⤷` Rust Tools
 
