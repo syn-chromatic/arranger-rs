@@ -135,6 +135,7 @@ impl VirtualEnv {
         if !venv_installed {
             self.print_installing_package();
             let state: bool = pip.install_package(&self.environment, package_name);
+            println!();
             if !state {
                 return;
             }
