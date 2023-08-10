@@ -94,6 +94,7 @@ impl PythonFixEnvCommand {
             let version: SemanticVersion = venv_cfg.version_info;
             let cfg_file: WPath = venv_cfg.file;
             self.create_env(&cfg_file, &version, &terminal);
+            println!();
         }
     }
 }

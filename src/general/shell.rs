@@ -57,7 +57,6 @@ impl CommandResponse {
                 let string: String = format!("{}", self.stdout);
                 self.terminal.writeln_color(&string, GreenANSI);
                 self.terminal.writeln_color(&separator, YellowANSI);
-                println!();
                 return;
             }
         }
@@ -65,7 +64,6 @@ impl CommandResponse {
         let string: String = format!("{}", self.stderr);
         self.terminal.writeln_color(&string, RedANSI);
         self.terminal.writeln_color(&separator, YellowANSI);
-        println!();
     }
 }
 
