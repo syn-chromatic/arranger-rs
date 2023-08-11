@@ -1,7 +1,7 @@
 use std::io;
 use std::io::Write;
 
-pub trait ANSICode {
+pub trait ANSICode: Send + Sync {
     fn value(&self) -> &'static str;
     fn boxed(self) -> Box<Self>
     where
@@ -10,7 +10,6 @@ pub trait ANSICode {
         Box::new(self)
     }
 }
-
 pub struct ResetANSI;
 impl ANSICode for ResetANSI {
     fn value(&self) -> &'static str {
@@ -137,5 +136,11 @@ impl Terminal {
 
     pub fn set_ansi_color<T: ANSICode + 'static>(&mut self, ansi_color: T) {
         self.ansi_color = Box::new(ansi_color);
+    }
+
+    pub fn write_reset(&self) {
+        let ansi_reset_v: &str = self.ansi_reset.value();
+        print!("{}", ansi_reset_v);
+        io::stdout().flush().unwrap();
     }
 }

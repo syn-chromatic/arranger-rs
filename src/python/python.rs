@@ -13,8 +13,8 @@ pub struct PythonEnvironment {
 }
 
 impl PythonEnvironment {
-    pub fn new(base_path: &WPath, version: &SemanticVersion) -> Option<Self> {
-        let python_path: Option<WPath> = Self::get_python_path(&base_path, &version);
+    pub fn new(base_dir: &WPath, version: &SemanticVersion) -> Option<Self> {
+        let python_path: Option<WPath> = Self::get_python_path(&base_dir, &version);
 
         if let Some(python_path) = python_path {
             let python_executable = python_path.join("python.exe");
@@ -34,6 +34,28 @@ impl PythonEnvironment {
             let version_string: String = version.get_2p_string();
             let string: String = format!("Unable to retrieve Python {}.", version_string);
             terminal.writeln_color(&string, RedANSI);
+        }
+        None
+    }
+
+    pub fn from_custom_path(
+        python_path: &WPath,
+        python_executable: &WPath,
+        version: &SemanticVersion,
+    ) -> Option<PythonEnvironment> {
+        let python_path: WPath = python_path.clone();
+        let python_executable: WPath = python_executable.clone();
+        let python_version: SemanticVersion = version.clone();
+
+        let pip: Option<Pip> = Pip::new(&python_executable);
+        if let Some(pip) = pip {
+            let environment: PythonEnvironment = PythonEnvironment {
+                python_version,
+                python_path,
+                python_executable,
+                pip,
+            };
+            return Some(environment);
         }
         None
     }

@@ -57,7 +57,7 @@ pub fn generate_rust_run_task() {
     let path_dir: WPath = WPath::from_string("./.vscode/");
 
     if !path_dir.exists() {
-        terminal.writeln_color("Creating Directory Structure..", CyanANSI);
+        terminal.writeln_color("[Creating Directory Structure]", CyanANSI);
         let result: Result<(), Error> = fs::create_dir_all(&path_dir);
 
         if let Err(error) = result {

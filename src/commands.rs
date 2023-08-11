@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
+use std::str::SplitWhitespace;
 
 use dirs;
 
@@ -14,6 +15,7 @@ use crate::general::terminal::{GreenANSI, RedANSI, YellowANSI};
 use crate::FixVirtualEnvOption;
 use crate::PackagesOption;
 use crate::PythonDownloadOption;
+use crate::VirtualEnvExecuteOption;
 use crate::VirtualEnvOption;
 
 use crate::general::http::HTTP;
@@ -80,7 +82,7 @@ impl PythonFixEnvCommand {
         let venv_cfgs: Vec<VirtualEnvCFG> = venv_search.find_configs();
 
         for venv_cfg in venv_cfgs {
-            let mut environment_directory: WPath = venv_cfg.file.clone().into();
+            let mut environment_directory: WPath = venv_cfg.cfg_file.clone().into();
             environment_directory.to_directory();
 
             let directory_string: String = format!("{:?}", environment_directory);
@@ -88,15 +90,15 @@ impl PythonFixEnvCommand {
             terminal.writeln_2p_primary(&parts, YellowANSI);
 
             let version: SemanticVersion = venv_cfg.version_info;
-            let cfg_file: WPath = venv_cfg.file;
-            self.create_env(&cfg_file, &version, &terminal);
+            let cfg_file: WPath = venv_cfg.cfg_file;
+            self.create_env(&cfg_file, &version);
             println!();
         }
     }
 }
 
 impl PythonFixEnvCommand {
-    fn create_env(&self, path: &WPath, version: &SemanticVersion, terminal: &Terminal) {
+    fn create_env(&self, path: &WPath, version: &SemanticVersion) {
         let data_dir: Option<PathBuf> = dirs::data_local_dir();
         let mut version: SemanticVersion = version.clone();
         version.set_patch(0);
@@ -113,6 +115,62 @@ impl PythonFixEnvCommand {
                 virtual_env.create_environment_in_path(path);
             }
         }
+    }
+}
+
+pub struct PythonExecuteCommand {
+    option: VirtualEnvExecuteOption,
+    terminal: Terminal,
+}
+
+impl PythonExecuteCommand {
+    pub fn new(option: VirtualEnvExecuteOption) -> Self {
+        let terminal: Terminal = Terminal::new();
+        PythonExecuteCommand { option, terminal }
+    }
+
+    pub fn execute_command(&self) {
+        let deep_search: bool = self.option.deep_search;
+        let parameters: String = format!("Deep Search: [{}]", deep_search);
+        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
+        self.terminal.writeln_2p_primary(&parts, YellowANSI);
+
+        let command_string: String = format!("[{}]\n", self.option.command);
+        let parts: [&str; 2] = ["Command: ", &command_string];
+        self.terminal.writeln_2p_primary(&parts, YellowANSI);
+
+        let args: Vec<&str> = self.get_command_args();
+        let venv_search: VirtualEnvSearch = VirtualEnvSearch::new(deep_search);
+        let venv_cfgs: Vec<VirtualEnvCFG> = venv_search.find_configs();
+
+        for (idx, venv_cfg) in venv_cfgs.iter().enumerate() {
+            let env_directory: WPath = venv_cfg.get_environment_directory();
+            let python_executable: WPath = venv_cfg.get_python_executable();
+            let version: &SemanticVersion = &venv_cfg.version_info;
+            let environment: Option<PythonEnvironment> =
+                PythonEnvironment::from_custom_path(&env_directory, &python_executable, version);
+
+            if let Some(environment) = environment {
+                let string: String = format!("[Environment -> {:?}]", env_directory);
+                self.terminal.writeln_color(&string, YellowANSI);
+
+                let virtual_env: VirtualEnv = VirtualEnv::new(&environment);
+                virtual_env.execute_custom_command(&args);
+            }
+
+            if idx != (venv_cfgs.len() - 1) {
+                println!()
+            }
+        }
+    }
+}
+
+impl PythonExecuteCommand {
+    fn get_command_args(&self) -> Vec<&str> {
+        let command: &str = &self.option.command;
+        let split: SplitWhitespace = command.split_whitespace();
+        let args: Vec<&str> = split.into_iter().collect();
+        args
     }
 }
 
@@ -148,7 +206,7 @@ impl PythonPackagesCommand {
                 self.get_packages_from_option(&env_dir);
 
             if let Ok(packages) = packages {
-                let string: String = format!("Environment: {:?}", env_dir);
+                let string: String = format!("[Environment -> {:?}]", env_dir);
                 self.terminal.writeln_color(&string, YellowANSI);
 
                 self.list_packages(&packages);

@@ -14,6 +14,7 @@ use enable_ansi_support::enable_ansi_support;
 
 use crate::commands::PythonCreateEnvCommand;
 use crate::commands::PythonDLCommand;
+use crate::commands::PythonExecuteCommand;
 use crate::commands::PythonFixEnvCommand;
 use crate::commands::PythonPackagesCommand;
 use crate::general::version::SemanticVersion;
@@ -43,13 +44,15 @@ struct PythonCommand {
 
 #[derive(Debug, Subcommand)]
 enum PythonSubCommands {
-    #[command(about = "Create Virtual Environment Command", name = "venv")]
+    #[command(about = "Create Virtual Environment", name = "venv")]
     VirtualEnv(VirtualEnvOption),
-    #[command(about = "Fix Virtual Environments Command", name = "fix-venv")]
+    #[command(about = "Fix Virtual Environments", name = "fix-venv")]
     FixVirtualEnvironments(FixVirtualEnvOption),
-    #[command(about = "Environment Packages Command", name = "packages")]
+    #[command(about = "Execute Command To Virtual Environments", name = "execute")]
+    VirtualEnvExecute(VirtualEnvExecuteOption),
+    #[command(about = "Virtual Environment Packages", name = "packages")]
     EnvPackages(PackagesOption),
-    #[command(about = "Python Download Command", name = "download")]
+    #[command(about = "Python Download", name = "download")]
     PythonDownload(PythonDownloadOption),
 }
 
@@ -92,6 +95,17 @@ pub struct FixVirtualEnvOption {
     /// Perform a deep search
     #[arg(short = 'D', long = "deep-search")]
     deep_search: bool,
+}
+
+#[derive(Debug, Parser)]
+pub struct VirtualEnvExecuteOption {
+    /// Perform a deep search
+    #[arg(short = 'D', long = "deep-search")]
+    deep_search: bool,
+
+    /// Pass command to each virtual environment
+    #[arg(short = 'C', long = "command", raw(true))]
+    command: String,
 }
 
 #[derive(Debug, Parser)]
@@ -154,6 +168,10 @@ async fn main() {
                 }
                 PythonSubCommands::EnvPackages(option) => {
                     let command: PythonPackagesCommand = PythonPackagesCommand::new(option);
+                    command.execute_command();
+                }
+                PythonSubCommands::VirtualEnvExecute(option) => {
+                    let command: PythonExecuteCommand = PythonExecuteCommand::new(option);
                     command.execute_command();
                 }
             },

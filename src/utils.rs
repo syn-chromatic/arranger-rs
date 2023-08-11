@@ -15,7 +15,7 @@ pub fn confirm_and_continue() -> bool {
     match io::stdin().read_line(&mut input) {
         Ok(_) => {
             if input.trim() == "y" || input.trim() == "Y" {
-                let string: &str = "Continuing...\n";
+                let string: &str = "Continuing...\n\n";
                 terminal.writeln_color(string, GreenANSI);
                 return true;
             } else {

@@ -10,8 +10,9 @@ ___
 |--------------------------------------------|---------------------------------------------------------------------|
 | [**python venv**](#python-venv)            | Set up a new virtual environment                                    |
 | [**python fix-venv**](#python-fix-venv)    | Find and resolve path issues in virtual environments                |
+| [**python execute**](#python-execute)      | Find and execute commands to virtual environments                   |
 | [**python packages**](#python-packages)    | Find and list packages within virtual environments                  |
-| [**python download**](#python-download)    | Fetch Python versions from the official FTP server         |
+| [**python download**](#python-download)    | Fetch Python versions from the official FTP server                  |
 
 #### `⤷` Rust Tools
 
@@ -40,6 +41,17 @@ ___
     Example: 
     # Search for environments and fix path issues
     arranger python fix-venv
+    ```
+
+  - <a name="python-execute"></a>**python execute**
+    ```
+    Options:
+    -D/--deep-search : Perform a deep search
+    -C/--command : Pass command to each virtual environment
+
+    Example:
+    # Search for environments and execute "pip install numpy"
+    arranger python execute -C "-m pip install numpy"
     ```
 
   - <a name="python-packages"></a>**python packages**

@@ -5,9 +5,8 @@ use crate::parsers::cfg_parser::CFGLine;
 use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
 
+use crate::general::terminal::CyanANSI;
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{RedANSI, YellowANSI};
-
 
 #[derive(Debug)]
 pub struct VirtualEnvCFG {
@@ -19,11 +18,11 @@ pub struct VirtualEnvCFG {
     pub base_prefix: WPath,
     pub base_exec_prefix: WPath,
     pub base_executable: WPath,
-    pub file: WPath,
+    pub cfg_file: WPath,
 }
 
 impl VirtualEnvCFG {
-    pub fn new(file: WPath, parsed_cfg: &Vec<CFGLine>) -> Option<Self> {
+    pub fn new(cfg_file: WPath, parsed_cfg: &Vec<CFGLine>) -> Option<Self> {
         let mut home: Option<WPath> = None;
         let mut implementation: Option<String> = None;
         let mut version_info: Option<SemanticVersion> = None;
@@ -62,14 +61,20 @@ impl VirtualEnvCFG {
             base_prefix: base_prefix.unwrap(),
             base_exec_prefix: base_exec_prefix.unwrap(),
             base_executable: base_executable.unwrap(),
-            file,
+            cfg_file,
         };
         Some(venv_cfg)
     }
 
     pub fn get_environment_directory(&self) -> WPath {
-        let directory: WPath = self.file.as_directory();
+        let directory: WPath = self.cfg_file.as_directory();
         directory
+    }
+
+    pub fn get_python_executable(&self) -> WPath {
+        let directory: WPath = self.get_environment_directory();
+        let python_executable: WPath = directory.join("Scripts/python.exe");
+        python_executable
     }
 }
 
@@ -101,7 +106,7 @@ impl VirtualEnv {
     pub fn create_environment(&self) {
         let venv_name: String = self.get_environment_name();
         let venv_args: [&str; 3] = ["-m", "virtualenv", &venv_name];
-        self.execute_environment_command(&venv_args);
+        self.execute_venv_command(&venv_args);
     }
 
     pub fn create_environment_in_path(&self, path: &WPath) {
@@ -110,13 +115,20 @@ impl VirtualEnv {
 
         if let Some(canonical_string) = canonical_string {
             let venv_args: [&str; 3] = ["-m", "virtualenv", &canonical_string];
-            self.execute_environment_command(&venv_args);
+            self.execute_venv_command(&venv_args);
         }
+    }
+
+    pub fn execute_custom_command(&self, args: &[&str]) {
+        let python_executable: &WPath = self.environment.get_python_executable();
+        self.print_executing_custom_command();
+        let command: CommandExecute = CommandExecute::new();
+        command.execute_spawn_command(&python_executable, &args);
     }
 }
 
 impl VirtualEnv {
-    fn execute_environment_command(&self, venv_args: &[&str]) {
+    fn execute_venv_command(&self, venv_args: &[&str]) {
         let pip: &Pip = self.environment.get_pip();
         let python_executable: &WPath = self.environment.get_python_executable();
 
@@ -159,14 +171,19 @@ impl VirtualEnv {
     }
 
     fn print_installing_package(&self) {
-        let string: &str = "Installing Virtual Environment Package..\n";
-        self.terminal.writeln_color(string, YellowANSI);
+        let string: &str = "[Installing Virtual Environment Package]\n";
+        self.terminal.writeln_color(string, CyanANSI);
     }
 
     fn print_creating_environment(&self) {
         let version: &SemanticVersion = self.environment.get_python_version();
         let version_string: String = version.get_2p_string();
-        let string: String = format!("Creating Python {} Environment..\n", version_string);
-        self.terminal.writeln_color(&string, YellowANSI);
+        let string: String = format!("[Creating Python {} Environment]\n", version_string);
+        self.terminal.writeln_color(&string, CyanANSI);
+    }
+
+    fn print_executing_custom_command(&self) {
+        let string: &str = "[Executing command]\n";
+        self.terminal.writeln_color(string, CyanANSI);
     }
 }
