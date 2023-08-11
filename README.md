@@ -1,7 +1,8 @@
 ## Arranger
 Arranger is a command-line utility designed to streamline development workflows in multiple programming languages.
 
-`Project in development.`
+`Project in development.`\
+`Currently only tested on Windows.`
 ___
 ### `➢` Features
 #### `⤷` Python Tools
