@@ -59,8 +59,10 @@ ___
     ```
     Options:
     -D/--deep-search : Perform a deep search
-    -S/--save : Creates a packages file in each environment (packages.txt)
-    -X/--distill : Distills packages by mutual dependencies (distilled_packages.txt)
+    -S/--save : Save package list for each environment [$ENV/packages.txt]
+    -X/--distill : Distill packages by mutual dependencies [With -S: $ENV/distilled_packages.txt]
+
+    [$ENV placeholder refers to the root path of a Python Virtual Environment]
 
     Examples: 
     # Search for environments, and list the packages installed

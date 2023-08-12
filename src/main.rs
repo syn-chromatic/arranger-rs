@@ -108,17 +108,20 @@ pub struct VirtualEnvExecuteOption {
     command: String,
 }
 
+/// Virtual Environment Packages
+///
+/// [$ENV placeholder refers to the root path of a Python Virtual Environment]
 #[derive(Debug, Parser)]
 pub struct PackagesOption {
     /// Perform a deep search
     #[arg(short = 'D', long = "deep-search")]
     deep_search: bool,
 
-    /// Create package list for each environment (packages.txt)
+    /// Save package list for each environment [$ENV/packages.txt]
     #[arg(short = 'S', long = "save", default_value = "false")]
     save: bool,
 
-    /// Distill packages by mutual dependencies (distilled_packages.txt)
+    /// Distill packages by mutual dependencies [With -S: $ENV/distilled_packages.txt]
     #[arg(short = 'X', long = "distill", default_value = "false")]
     distill: bool,
 }
