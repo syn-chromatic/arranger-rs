@@ -32,7 +32,9 @@ impl PythonEnvironment {
         } else {
             let terminal: Terminal = Terminal::new();
             let version_string: String = version.get_2p_string();
-            let string: String = format!("Unable to retrieve Python {}.", version_string);
+            let string: String = format!("Unable to retrieve Python {}.\n", version_string);
+            terminal.writeln_color(&string, RedANSI);
+            let string: String = format!("Make sure you have it installed, and it's in the expected path.\nExpected Path: {:?}", base_dir);
             terminal.writeln_color(&string, RedANSI);
         }
         None

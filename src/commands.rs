@@ -441,6 +441,14 @@ impl VirtualEnvSearch {
 
     fn confirm_search(&self, files: &HashSet<PathBuf>) -> bool {
         let terminal: Terminal = Terminal::new();
+
+        if files.len() == 0 {
+            let string: &str =
+                "\nNo environments were found.\nTry creating one with: arranger python venv\n";
+            terminal.writeln_color(string, RedANSI);
+            return false;
+        }
+
         terminal.writeln_color("\nFound Environments:", GreenANSI);
 
         for file in files {

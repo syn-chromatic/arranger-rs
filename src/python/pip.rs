@@ -21,14 +21,18 @@ pub struct Pip {
 
 impl Pip {
     pub fn new(python_executable: &WPath) -> Option<Self> {
-        let pip_version: Option<SemanticVersion> = Self::parse_pip_version(&python_executable);
-        if let Some(pip_version) = pip_version {
+        let pip_version: Result<SemanticVersion, io::Error> =
+            Self::parse_pip_version(&python_executable);
+
+        if let Ok(pip_version) = pip_version {
             let pip: Pip = Pip { pip_version };
             return Some(pip);
         }
+        let error: io::Error = pip_version.unwrap_err();
         let terminal: Terminal = Terminal::new();
-        let string: &str = "Unable to retrieve Pip version.";
+        let string: &str = "Found Python, but was unable to retrieve Pip version.\n";
         terminal.writeln_color(&string, RedANSI);
+        terminal.writeln_color(&error.to_string(), RedANSI);
         None
     }
 
@@ -88,7 +92,7 @@ impl Pip {
         args
     }
 
-    fn parse_pip_version(python_executable: &WPath) -> Option<SemanticVersion> {
+    fn parse_pip_version(python_executable: &WPath) -> Result<SemanticVersion, io::Error> {
         let args: [&str; 3] = ["-m", "pip", "--version"];
         let command: CommandExecute = CommandExecute::new();
         let response: Option<CommandResponse> = command.execute_command(&python_executable, &args);
@@ -112,10 +116,21 @@ impl Pip {
                 let version_string: String = chars.into_iter().collect();
                 let version: Option<SemanticVersion> =
                     SemanticVersion::from_string(&version_string);
-                return version;
+                if let Some(version) = version {
+                    return Ok(version);
+                }
+            }
+
+            let stderr: &str = response.get_stderr();
+            if !stderr.is_empty() {
+                let error_string: String = format!("Pip Error: {}", stderr);
+                let error: io::Error = io::Error::new(io::ErrorKind::Other, error_string);
+                return Err(error);
             }
         }
-        None
+        let error_string: &str = "Error: Failed to get response from Pip.";
+        let error: io::Error = io::Error::new(io::ErrorKind::Other, error_string);
+        Err(error)
     }
 }
 
