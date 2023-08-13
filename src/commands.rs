@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io;
@@ -15,6 +16,7 @@ use crate::general::terminal::{GreenANSI, RedANSI, YellowANSI};
 use crate::FixVirtualEnvOption;
 use crate::PackagesOption;
 use crate::PythonDownloadOption;
+use crate::SearchOption;
 use crate::VirtualEnvExecuteOption;
 use crate::VirtualEnvOption;
 
@@ -380,6 +382,49 @@ impl PythonDLCommand {
         let parts: [&str; 2] = ["Search Parameters: ", &parameters];
         let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
         terminal.writeln_color_p(&parts, &colors);
+    }
+}
+
+pub struct SearchCommand {
+    option: SearchOption,
+}
+
+impl SearchCommand {
+    pub fn new(option: SearchOption) -> Self {
+        SearchCommand { option }
+    }
+
+    pub fn execute_command(&self) {
+        let terminal: Terminal = Terminal::new();
+        let mut file_search: FileSearch = FileSearch::new();
+        let filename: &String = &self.option.filename;
+
+        let current_dir: Result<PathBuf, io::Error> = env::current_dir();
+
+        if let Ok(root) = current_dir {
+            let exclusive_filenames: Vec<&str> = vec![&filename];
+            let exclusive_exts: Vec<&str> = vec![];
+            let exclude_dirs: Vec<&str> = vec![];
+            let quit_directory_on_match: bool = false;
+
+            file_search.set_root(root);
+            file_search.set_exclusive_filenames(exclusive_filenames);
+            file_search.set_exclusive_extensions(exclusive_exts);
+            file_search.set_exclude_directories(exclude_dirs);
+            file_search.set_quit_directory_on_match(quit_directory_on_match);
+
+            let files: HashSet<PathBuf> = file_search.search_files();
+
+            terminal.writeln_color("\nFiles:", GreenANSI);
+
+            for file in files {
+                let file: WPath = file.into();
+                let path_str: String = format!("[{:?}]", file);
+                let parts: [&str; 2] = ["Path: ", &path_str];
+                let colors: [Box<dyn ANSICode>; 2] = [CyanANSI.boxed(), WhiteANSI.boxed()];
+                terminal.writeln_color_p(&parts, &colors);
+            }
+        }
     }
 }
 

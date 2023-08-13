@@ -145,6 +145,13 @@ pub struct GenerateTasksOption {
     run_task: bool,
 }
 
+#[derive(Debug, Parser)]
+pub struct SearchOption {
+    /// Filename
+    #[arg(short = 'F', long = "filename")]
+    filename: String,
+}
+
 #[tokio::main]
 async fn main() {
     let ansi_support: Result<(), io::Error> = enable_ansi_support();

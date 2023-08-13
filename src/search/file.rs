@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::collections::LinkedList;
 use std::env;
 use std::ffi::OsStr;
-use std::fs::ReadDir;
+use std::fs::{Metadata, ReadDir};
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -13,6 +13,7 @@ pub struct SearchProgress {
     terminal: Terminal,
     search_counter: usize,
     match_counter: usize,
+    search_bytes: u64,
     previous_length: usize,
 }
 
@@ -21,18 +22,25 @@ impl SearchProgress {
         let terminal: Terminal = Terminal::new();
         let search_counter: usize = 0;
         let match_counter: usize = 0;
+        let search_bytes: u64 = 0;
         let previous_length: usize = 0;
 
         SearchProgress {
             terminal,
             search_counter,
             match_counter,
+            search_bytes,
             previous_length,
         }
     }
 
     pub fn increment_search(&mut self) {
         self.search_counter += 1;
+    }
+
+    pub fn add_search_bytes(&mut self, metadata: &Metadata) {
+        let bytes: u64 = metadata.len();
+        self.search_bytes += bytes;
     }
 
     pub fn increment_match(&mut self) {
@@ -61,14 +69,22 @@ impl SearchProgress {
     fn print_progress(&mut self) {
         let match_string: String = self.match_counter.to_string();
         let search_string: String = self.search_counter.to_string();
-        let parts: [&str; 5] = [
+        let size_string: String = self.get_formatted_size();
+        let parts: [&str; 8] = [
             "\rMatch: ",
             &match_string,
             " | ",
-            "Searched: ",
+            "Searched Items: ",
             &search_string,
+            " | ",
+            "Searched Size: ",
+            &size_string,
         ];
-        let colors: [Box<dyn ANSICode>; 5] = [
+
+        let colors: [Box<dyn ANSICode>; 8] = [
+            YellowANSI.boxed(),
+            WhiteANSI.boxed(),
+            WhiteANSI.boxed(),
             YellowANSI.boxed(),
             WhiteANSI.boxed(),
             WhiteANSI.boxed(),
@@ -93,6 +109,22 @@ impl SearchProgress {
             return fill as usize;
         }
         0
+    }
+
+    fn get_formatted_size(&self) -> String {
+        const KB: f64 = (1u64 << 10) as f64;
+        const MB: f64 = (1u64 << 20) as f64;
+        const GB: f64 = (1u64 << 30) as f64;
+        const TB: f64 = (1u64 << 40) as f64;
+
+        let search_bytes: f64 = self.search_bytes as f64;
+        match search_bytes {
+            _ if search_bytes <= KB => format!("{:.2} B", search_bytes),
+            _ if search_bytes < MB => format!("{:.2} KB", search_bytes / KB),
+            _ if search_bytes < GB => format!("{:.2} MB", search_bytes / MB),
+            _ if search_bytes < TB => format!("{:.2} GB", search_bytes / GB),
+            _ => format!("{:.2} TB", search_bytes / TB),
+        }
     }
 }
 
@@ -216,14 +248,6 @@ impl FileSearch {
         filter_validation
     }
 
-    fn get_canonical_path(&self, path: &PathBuf) -> Option<PathBuf> {
-        let path_canonical: Result<PathBuf, io::Error> = path.canonicalize();
-        if path_canonical.is_ok() {
-            return Some(path_canonical.unwrap());
-        }
-        None
-    }
-
     fn get_abs_path(&self) -> PathBuf {
         env::current_dir().unwrap()
     }
@@ -304,15 +328,18 @@ impl FileSearch {
 
     fn handle_file(
         &self,
-        path: &PathBuf,
+        metadata: &Metadata,
+        file: &PathBuf,
         files: &mut HashSet<PathBuf>,
         search_progress: &mut SearchProgress,
     ) -> bool {
-        let filter_validation: bool = self.get_filter_validation(&path);
+        let filter_validation: bool = self.get_filter_validation(file);
 
         search_progress.increment_search();
-        if !files.contains(path) && filter_validation {
-            files.insert(path.clone());
+        search_progress.add_search_bytes(metadata);
+
+        if !files.contains(file) && filter_validation {
+            files.insert(file.clone());
             search_progress.increment_match();
             return true;
         }
@@ -329,18 +356,22 @@ impl FileSearch {
         let mut additional_directories: LinkedList<PathBuf> = LinkedList::new();
 
         for entry in entries {
-            if let Ok(entry_dir) = entry.as_ref() {
-                let path: PathBuf = entry_dir.path();
+            if let Ok(entry) = entry.as_ref() {
+                if let Ok(metadata) = entry.metadata() {
+                    search_progress.show_progress();
+                    let path: PathBuf = entry.path();
 
-                search_progress.show_progress();
-
-                if path.is_file() {
-                    let is_match: bool = self.handle_file(&path, files, search_progress);
-                    if is_match && self.quit_directory_on_match {
-                        return;
+                    if metadata.is_file() {
+                        let is_match: bool =
+                            self.handle_file(&metadata, &path, files, search_progress);
+                        if is_match && self.quit_directory_on_match {
+                            return;
+                        }
+                    } else if metadata.is_dir() {
+                        if !metadata.is_symlink() {
+                            additional_directories.push_back(path);
+                        }
                     }
-                } else if path.is_dir() {
-                    additional_directories.push_back(path);
                 }
             }
         }
@@ -355,8 +386,7 @@ impl FileSearch {
         queue: &mut LinkedList<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
-        let root_op: Option<PathBuf> = self.get_canonical_path(root);
-        if let Some(root) = root_op {
+        if let Ok(root) = root.canonicalize() {
             if self.is_excluded_directory(&root) {
                 return;
             }
