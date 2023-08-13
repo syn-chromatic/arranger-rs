@@ -1,7 +1,8 @@
 use std::collections::HashSet;
+use std::collections::LinkedList;
 use std::env;
 use std::ffi::OsStr;
-use std::fs::{DirEntry, ReadDir};
+use std::fs::ReadDir;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -39,7 +40,7 @@ impl SearchProgress {
     }
 
     pub fn show_progress(&mut self) {
-        if self.search_counter % 100 == 0 {
+        if self.search_counter % 500 == 0 {
             self.print_progress();
         }
     }
@@ -165,12 +166,18 @@ impl FileSearch {
     }
 
     pub fn search_files(&self) -> HashSet<PathBuf> {
-        let mut roots: HashSet<PathBuf> = HashSet::new();
         let mut files: HashSet<PathBuf> = HashSet::new();
+        let mut queue: LinkedList<PathBuf> = LinkedList::new();
+        let mut search_progress: SearchProgress = SearchProgress::new();
+
         let root: PathBuf = self.get_root_path();
         self.print_search_initialize(&root);
-        let mut search_progress: SearchProgress = SearchProgress::new();
-        self.search(&root, &mut roots, &mut files, &mut search_progress);
+        queue.push_back(root);
+
+        while let Some(current_dir) = queue.pop_front() {
+            self.search(&current_dir, &mut files, &mut queue, &mut search_progress);
+        }
+
         search_progress.finalize();
         files
     }
@@ -209,31 +216,11 @@ impl FileSearch {
         filter_validation
     }
 
-    fn get_entry_path(&self, entry: &Result<DirEntry, io::Error>) -> Option<PathBuf> {
-        if entry.is_ok() {
-            let path_buf: PathBuf = entry.as_ref().unwrap().path();
-            let path_canonical: Option<PathBuf> = self.get_canonical_path(&path_buf);
-            return path_canonical;
-        }
-        None
-    }
-
     fn get_canonical_path(&self, path: &PathBuf) -> Option<PathBuf> {
         let path_canonical: Result<PathBuf, io::Error> = path.canonicalize();
         if path_canonical.is_ok() {
             return Some(path_canonical.unwrap());
         }
-
-        println!("\nPath Inaccessible: {:?}\n", path);
-        None
-    }
-
-    fn get_directory_entries(&self, root: &PathBuf) -> Option<ReadDir> {
-        let entries: Result<ReadDir, io::Error> = root.read_dir();
-        if entries.is_ok() {
-            return Some(entries.unwrap());
-        }
-        println!("\nPath Inaccessible: {:?}\n", root);
         None
     }
 
@@ -332,32 +319,19 @@ impl FileSearch {
         false
     }
 
-    fn recurse_additional_directories(
-        &self,
-        additional_directories: HashSet<PathBuf>,
-        roots: &mut HashSet<PathBuf>,
-        files: &mut HashSet<PathBuf>,
-        search_progress: &mut SearchProgress,
-    ) {
-        for path in additional_directories {
-            roots.insert(path.clone());
-            self.search(&path, roots, files, search_progress);
-        }
-    }
-
     fn walker(
         &self,
         entries: ReadDir,
-        roots: &mut HashSet<PathBuf>,
         files: &mut HashSet<PathBuf>,
+        queue: &mut LinkedList<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
-        let mut additional_directories: HashSet<PathBuf> = HashSet::new();
+        let mut additional_directories: LinkedList<PathBuf> = LinkedList::new();
 
         for entry in entries {
-            let entry_path: Option<PathBuf> = self.get_entry_path(&entry);
+            if let Ok(entry_dir) = entry.as_ref() {
+                let path: PathBuf = entry_dir.path();
 
-            if let Some(path) = entry_path {
                 search_progress.show_progress();
 
                 if path.is_file() {
@@ -366,19 +340,19 @@ impl FileSearch {
                         return;
                     }
                 } else if path.is_dir() {
-                    additional_directories.insert(path);
+                    additional_directories.push_back(path);
                 }
             }
         }
 
-        self.recurse_additional_directories(additional_directories, roots, files, search_progress);
+        queue.append(&mut additional_directories);
     }
 
     fn search(
         &self,
         root: &PathBuf,
-        roots: &mut HashSet<PathBuf>,
         files: &mut HashSet<PathBuf>,
+        queue: &mut LinkedList<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
         let root_op: Option<PathBuf> = self.get_canonical_path(root);
@@ -387,9 +361,9 @@ impl FileSearch {
                 return;
             }
 
-            let entries: Option<ReadDir> = self.get_directory_entries(&root);
-            if let Some(entries) = entries {
-                self.walker(entries, roots, files, search_progress);
+            let entries: Result<ReadDir, io::Error> = root.read_dir();
+            if let Ok(entries) = entries {
+                self.walker(entries, files, queue, search_progress);
             }
         }
     }
