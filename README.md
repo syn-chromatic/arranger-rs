@@ -23,9 +23,9 @@ ___
 
 #### `⤷` Search Tool
 
-| Feature                 | Description                         |
-|-------------------------|-------------------------------------|
-| [**search**](#search)   | Search files on system              |
+| Feature                 | Description                                  |
+|-------------------------|----------------------------------------------|
+| [**search**](#search)   | Search files on system with regex support    |
 
 ___
 ### `➢` **Usage**
