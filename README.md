@@ -25,7 +25,7 @@ ___
 
 | Feature                 | Description                         |
 |-------------------------|-------------------------------------|
-| [**search**](#search)   | Search Files On System              |
+| [**search**](#search)   | Search files on system              |
 
 ___
 ### `➢` **Usage**
