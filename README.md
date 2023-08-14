@@ -21,6 +21,12 @@ ___
 |-----------------------------------------------|--------------------------------------------------|
 | [**rust vscode-tasks**](#rust-vscode-tasks)   | Generate VSCode task configurations              |
 
+#### `⤷` Search Tool
+
+| Feature                 | Description                         |
+|-------------------------|-------------------------------------|
+| [**search**](#search)   | Search Files On System              |
+
 ___
 ### `➢` **Usage**
 #### `⤷` **Python Tools**
@@ -106,6 +112,29 @@ ___
     -R/--run-task : Generate VSCode run task configuration
 
     Example: arranger rust vscode-tasks -R
+    ```
+
+
+#### `⤷` **Search Tool**
+  - <a name="search"></a>**search**
+    ```
+    Options:
+    -F/--filename : Specify Filename [Searches by whole name when used without regex]
+    -E/--extensions : Specify Extensions [Can be used multiple times to add items]
+    -R/--regex : Enable the regex engine for pattern matching
+
+    Examples:
+    # Search for file by name
+    arranger search -F somefile
+
+    # Search for file by name with specific extension
+    arranger search -F somefile -E zip
+
+    # Search for any file with multiple extensions
+    arranger search -E zip -E rar -E tar
+
+    # Search for file with regex
+    arranger search -F .*some$ -R
     ```
 
 ___

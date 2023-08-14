@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io;
@@ -10,28 +8,25 @@ use std::str::SplitWhitespace;
 use dirs;
 
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{ANSICode, CyanANSI, WhiteANSI};
+use crate::general::terminal::{ANSICode, WhiteANSI};
 use crate::general::terminal::{GreenANSI, RedANSI, YellowANSI};
 
-use crate::FixVirtualEnvOption;
-use crate::PackagesOption;
-use crate::PythonDownloadOption;
-use crate::SearchOption;
-use crate::VirtualEnvExecuteOption;
-use crate::VirtualEnvOption;
+use crate::commands::configuration::FixVirtualEnvOption;
+use crate::commands::configuration::PackagesOption;
+use crate::commands::configuration::PythonDownloadOption;
+use crate::commands::configuration::VirtualEnvExecuteOption;
+use crate::commands::configuration::VirtualEnvOption;
 
 use crate::general::http::HTTP;
 use crate::general::path::WPath;
 use crate::general::version::SemanticVersion;
-use crate::parsers::cfg_parser::CFGLine;
-use crate::parsers::cfg_parser::CFGParser;
+
 use crate::python::pip::{PipMetadata, PipPackage, PipPackageParser};
 use crate::python::python::PythonEnvironment;
 use crate::python::python_ftp::PythonFTPRetriever;
 use crate::python::virtualenv::VirtualEnv;
 use crate::python::virtualenv::VirtualEnvCFG;
-use crate::search::file::FileSearch;
-use crate::utils::confirm_and_continue;
+use crate::python::virtualenv::VirtualEnvSearch;
 
 pub struct PythonCreateEnvCommand {
     option: VirtualEnvOption,
@@ -64,21 +59,18 @@ impl PythonCreateEnvCommand {
 
 pub struct PythonFixEnvCommand {
     option: FixVirtualEnvOption,
+    terminal: Terminal,
 }
 
 impl PythonFixEnvCommand {
     pub fn new(option: FixVirtualEnvOption) -> Self {
-        PythonFixEnvCommand { option }
+        let terminal = Terminal::new();
+        PythonFixEnvCommand { option, terminal }
     }
 
     pub fn execute_command(&self) {
         let deep_search: bool = self.option.deep_search;
-
-        let terminal: Terminal = Terminal::new();
-        let parameters: String = format!("Deep Search: [{}]", deep_search);
-        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
-        terminal.writeln_color_p(&parts, &colors);
+        self.print_search_parameters();
 
         let venv_search: VirtualEnvSearch = VirtualEnvSearch::new(deep_search);
         let venv_cfgs: Vec<VirtualEnvCFG> = venv_search.find_configs();
@@ -89,7 +81,7 @@ impl PythonFixEnvCommand {
 
             let directory_string: String = format!("{:?}", environment_directory);
             let parts: [&str; 2] = ["Attempting Environment Fix: ", &directory_string];
-            terminal.writeln_2p_primary(&parts, YellowANSI);
+            self.terminal.writeln_2p_primary(&parts, YellowANSI);
 
             let version: SemanticVersion = venv_cfg.version_info;
             let cfg_file: WPath = venv_cfg.cfg_file;
@@ -118,6 +110,15 @@ impl PythonFixEnvCommand {
             }
         }
     }
+
+    fn print_search_parameters(&self) {
+        let deep_search: bool = self.option.deep_search;
+        let parameters: String = format!("Deep Search: [{}]", deep_search);
+        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
+        let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
+        self.terminal.writeln_color_p(&parts, &colors);
+        println!();
+    }
 }
 
 pub struct PythonExecuteCommand {
@@ -133,9 +134,7 @@ impl PythonExecuteCommand {
 
     pub fn execute_command(&self) {
         let deep_search: bool = self.option.deep_search;
-        let parameters: String = format!("Deep Search: [{}]", deep_search);
-        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        self.terminal.writeln_2p_primary(&parts, YellowANSI);
+        self.print_search_parameters();
 
         let command_string: String = format!("[{}]\n", self.option.command);
         let parts: [&str; 2] = ["Command: ", &command_string];
@@ -174,6 +173,13 @@ impl PythonExecuteCommand {
         let args: Vec<&str> = split.into_iter().collect();
         args
     }
+    fn print_search_parameters(&self) {
+        let deep_search: bool = self.option.deep_search;
+        let parameters: String = format!("Deep Search: [{}]", deep_search);
+        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
+        self.terminal.writeln_2p_primary(&parts, YellowANSI);
+        println!();
+    }
 }
 
 pub struct PythonPackagesCommand {
@@ -190,13 +196,8 @@ impl PythonPackagesCommand {
     pub fn execute_command(&self) {
         let deep_search: bool = self.option.deep_search;
         let save: bool = self.option.save;
-        let distilled: bool = self.option.distill;
 
-        let parameters: String =
-            format!("Deep Search: [{}] | Distill: [{}]", deep_search, distilled);
-        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
-        self.terminal.writeln_color_p(&parts, &colors);
+        self.print_search_parameters();
 
         let venv_search: VirtualEnvSearch = VirtualEnvSearch::new(deep_search);
         let venv_cfgs: Vec<VirtualEnvCFG> = venv_search.find_configs();
@@ -226,6 +227,21 @@ impl PythonPackagesCommand {
 }
 
 impl PythonPackagesCommand {
+    fn print_search_parameters(&self) {
+        let deep_search: bool = self.option.deep_search;
+        let save: bool = self.option.save;
+        let distilled: bool = self.option.distill;
+
+        let parameters: String = format!(
+            "Deep Search: [{}] | Distill: [{}] | Save: [{}]",
+            deep_search, distilled, save
+        );
+        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
+        let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
+        self.terminal.writeln_color_p(&parts, &colors);
+        println!();
+    }
+
     fn get_filename_from_option(&self) -> &str {
         let distill: bool = self.option.distill;
         let filename: &str = if distill {
@@ -382,132 +398,5 @@ impl PythonDLCommand {
         let parts: [&str; 2] = ["Search Parameters: ", &parameters];
         let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
         terminal.writeln_color_p(&parts, &colors);
-    }
-}
-
-pub struct SearchCommand {
-    option: SearchOption,
-}
-
-impl SearchCommand {
-    pub fn new(option: SearchOption) -> Self {
-        SearchCommand { option }
-    }
-
-    pub fn execute_command(&self) {
-        let terminal: Terminal = Terminal::new();
-        let mut file_search: FileSearch = FileSearch::new();
-        let filename: &String = &self.option.filename;
-
-        let current_dir: Result<PathBuf, io::Error> = env::current_dir();
-
-        if let Ok(root) = current_dir {
-            let exclusive_filenames: Vec<&str> = vec![&filename];
-            let exclusive_exts: Vec<&str> = vec![];
-            let exclude_dirs: Vec<&str> = vec![];
-            let quit_directory_on_match: bool = false;
-
-            file_search.set_root(root);
-            file_search.set_exclusive_filenames(exclusive_filenames);
-            file_search.set_exclusive_extensions(exclusive_exts);
-            file_search.set_exclude_directories(exclude_dirs);
-            file_search.set_quit_directory_on_match(quit_directory_on_match);
-
-            let files: HashSet<PathBuf> = file_search.search_files();
-
-            terminal.writeln_color("\nFiles:", GreenANSI);
-
-            for file in files {
-                let file: WPath = file.into();
-                let path_str: String = format!("[{:?}]", file);
-                let parts: [&str; 2] = ["Path: ", &path_str];
-                let colors: [Box<dyn ANSICode>; 2] = [CyanANSI.boxed(), WhiteANSI.boxed()];
-                terminal.writeln_color_p(&parts, &colors);
-            }
-        }
-    }
-}
-
-pub struct VirtualEnvSearch {
-    deep_search: bool,
-}
-
-impl VirtualEnvSearch {
-    pub fn new(deep_search: bool) -> Self {
-        VirtualEnvSearch { deep_search }
-    }
-
-    pub fn find_configs(&self) -> Vec<VirtualEnvCFG> {
-        let current_dir: Result<PathBuf, io::Error> = std::env::current_dir();
-
-        let mut venv_cfgs: Vec<VirtualEnvCFG> = Vec::new();
-        if let Ok(current_dir) = current_dir {
-            let cfg_files: HashSet<PathBuf> = self.find_config(&current_dir);
-
-            if !self.confirm_search(&cfg_files) {
-                return venv_cfgs;
-            }
-
-            for cfg_file in cfg_files {
-                let cfg_parser: CFGParser = CFGParser::new();
-                let result: Result<Vec<CFGLine>, io::Error> = cfg_parser.from_file(&cfg_file);
-
-                if let Ok(result) = result {
-                    let cfg_path: WPath = WPath::from_path_buf(&cfg_file);
-                    let venv_cfg: Option<VirtualEnvCFG> = VirtualEnvCFG::new(cfg_path, &result);
-                    if let Some(venv_cfg) = venv_cfg {
-                        venv_cfgs.push(venv_cfg);
-                    }
-                }
-            }
-        }
-        venv_cfgs
-    }
-}
-
-impl VirtualEnvSearch {
-    fn find_config(&self, root: &PathBuf) -> HashSet<PathBuf> {
-        let mut file_search: FileSearch = FileSearch::new();
-
-        let exclusive_filenames: Vec<&str> = vec!["pyvenv.cfg"];
-        let exclusive_exts: Vec<&str> = vec![];
-        let exclude_dirs: Vec<&str> = vec![];
-        let quit_directory_on_match: bool = !self.deep_search;
-
-        file_search.set_root(root);
-        file_search.set_exclusive_filenames(exclusive_filenames);
-        file_search.set_exclusive_extensions(exclusive_exts);
-        file_search.set_exclude_directories(exclude_dirs);
-        file_search.set_quit_directory_on_match(quit_directory_on_match);
-
-        let files: HashSet<PathBuf> = file_search.search_files();
-        files
-    }
-
-    fn confirm_search(&self, files: &HashSet<PathBuf>) -> bool {
-        let terminal: Terminal = Terminal::new();
-
-        if files.len() == 0 {
-            let string: &str =
-                "\nNo environments were found.\nTry creating one with: arranger python venv\n";
-            terminal.writeln_color(string, RedANSI);
-            return false;
-        }
-
-        terminal.writeln_color("\nFound Environments:", GreenANSI);
-
-        for file in files {
-            let mut environment_directory: WPath = file.into();
-            environment_directory.to_directory();
-
-            let directory_string = environment_directory.get_canonical_string();
-            if let Some(directory_string) = directory_string {
-                let path_str: String = format!("[{}]", directory_string);
-                let parts: [&str; 2] = ["Path: ", &path_str];
-                let colors: [Box<dyn ANSICode>; 2] = [CyanANSI.boxed(), WhiteANSI.boxed()];
-                terminal.writeln_color_p(&parts, &colors);
-            }
-        }
-        confirm_and_continue()
     }
 }

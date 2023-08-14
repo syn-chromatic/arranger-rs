@@ -1,12 +1,20 @@
+use std::collections::HashSet;
+use std::io;
+use std::path::PathBuf;
+
 use crate::general::path::WPath;
 use crate::general::shell::{CommandExecute, CommandResponse};
 use crate::general::version::SemanticVersion;
 use crate::parsers::cfg_parser::CFGLine;
+use crate::parsers::cfg_parser::CFGParser;
 use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
+use crate::search::file::FileSearch;
 
-use crate::general::terminal::CyanANSI;
 use crate::general::terminal::Terminal;
+use crate::general::terminal::{ANSICode, CyanANSI, GreenANSI, RedANSI, WhiteANSI};
+
+use crate::utils::confirm_and_continue;
 
 #[derive(Debug)]
 pub struct VirtualEnvCFG {
@@ -185,5 +193,89 @@ impl VirtualEnv {
     fn print_executing_custom_command(&self) {
         let string: &str = "[Executing command]\n";
         self.terminal.writeln_color(string, CyanANSI);
+    }
+}
+
+pub struct VirtualEnvSearch {
+    deep_search: bool,
+}
+
+impl VirtualEnvSearch {
+    pub fn new(deep_search: bool) -> Self {
+        VirtualEnvSearch { deep_search }
+    }
+
+    pub fn find_configs(&self) -> Vec<VirtualEnvCFG> {
+        let current_dir: Result<PathBuf, io::Error> = std::env::current_dir();
+
+        let mut venv_cfgs: Vec<VirtualEnvCFG> = Vec::new();
+        if let Ok(current_dir) = current_dir {
+            let cfg_files: HashSet<PathBuf> = self.find_config(&current_dir);
+
+            if !self.confirm_search(&cfg_files) {
+                return venv_cfgs;
+            }
+
+            for cfg_file in cfg_files {
+                let cfg_parser: CFGParser = CFGParser::new();
+                let result: Result<Vec<CFGLine>, io::Error> = cfg_parser.from_file(&cfg_file);
+
+                if let Ok(result) = result {
+                    let cfg_path: WPath = WPath::from_path_buf(&cfg_file);
+                    let venv_cfg: Option<VirtualEnvCFG> = VirtualEnvCFG::new(cfg_path, &result);
+                    if let Some(venv_cfg) = venv_cfg {
+                        venv_cfgs.push(venv_cfg);
+                    }
+                }
+            }
+        }
+        venv_cfgs
+    }
+}
+
+impl VirtualEnvSearch {
+    fn find_config(&self, root: &PathBuf) -> HashSet<PathBuf> {
+        let mut file_search: FileSearch = FileSearch::new();
+
+        let exclusive_filenames: Vec<&str> = vec!["pyvenv.cfg"];
+        let exclusive_exts: Vec<&str> = vec![];
+        let exclude_dirs: Vec<&str> = vec![];
+        let quit_directory_on_match: bool = !self.deep_search;
+
+        file_search.set_root(root);
+        file_search.set_exclusive_filenames(exclusive_filenames);
+        file_search.set_exclusive_extensions(exclusive_exts);
+        file_search.set_exclude_directories(exclude_dirs);
+        file_search.set_quit_directory_on_match(quit_directory_on_match);
+
+        let files: HashSet<PathBuf> = file_search.search_files();
+        files
+    }
+
+    fn confirm_search(&self, files: &HashSet<PathBuf>) -> bool {
+        let terminal: Terminal = Terminal::new();
+
+        if files.len() == 0 {
+            let string: &str =
+                "\nNo environments were found.\nTry creating one with: arranger python venv\n";
+            terminal.writeln_color(string, RedANSI);
+            return false;
+        }
+
+        terminal.writeln_color("\nFound Environments:", GreenANSI);
+
+        for file in files {
+            let mut environment_directory: WPath = file.into();
+            environment_directory.to_directory();
+
+            let directory_string = environment_directory.get_canonical_string();
+            if let Some(directory_string) = directory_string {
+                let path_str: String = format!("[{}]", directory_string);
+                let parts: [&str; 2] = ["Path: ", &path_str];
+                let colors: [Box<dyn ANSICode>; 2] = [CyanANSI.boxed(), WhiteANSI.boxed()];
+                terminal.writeln_color_p(&parts, &colors);
+            }
+        }
+        confirm_and_continue()
     }
 }

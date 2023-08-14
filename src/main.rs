@@ -9,148 +9,24 @@ mod utils;
 use std::io;
 
 use clap::error::Error as ClapError;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use enable_ansi_support::enable_ansi_support;
 
-use crate::commands::PythonCreateEnvCommand;
-use crate::commands::PythonDLCommand;
-use crate::commands::PythonExecuteCommand;
-use crate::commands::PythonFixEnvCommand;
-use crate::commands::PythonPackagesCommand;
-use crate::general::version::SemanticVersion;
+use crate::commands::configuration::Cli;
+use crate::commands::configuration::Commands;
+use crate::commands::configuration::PythonSubCommands;
+use crate::commands::configuration::RustSubCommands;
+use crate::commands::configuration::SearchOption;
+
+use crate::commands::python::PythonCreateEnvCommand;
+use crate::commands::python::PythonDLCommand;
+use crate::commands::python::PythonExecuteCommand;
+use crate::commands::python::PythonFixEnvCommand;
+use crate::commands::python::PythonPackagesCommand;
+use crate::commands::search::SearchCommand;
+
 use crate::rust::tasks::generate_rust_run_task;
 use crate::utils::print_options;
-
-#[derive(Debug, Parser)]
-#[command(name = "Arranger")]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Debug, Subcommand)]
-enum Commands {
-    #[command(about = "Python Tools")]
-    Python(PythonCommand),
-    #[command(about = "Rust Tools")]
-    Rust(RustCommand),
-}
-
-#[derive(Debug, Parser)]
-struct PythonCommand {
-    #[command(subcommand)]
-    subcommands: PythonSubCommands,
-}
-
-#[derive(Debug, Subcommand)]
-enum PythonSubCommands {
-    #[command(about = "Create Virtual Environment", name = "venv")]
-    VirtualEnv(VirtualEnvOption),
-    #[command(about = "Fix Virtual Environments", name = "fix-venv")]
-    FixVirtualEnvironments(FixVirtualEnvOption),
-    #[command(about = "Execute Command To Virtual Environments", name = "execute")]
-    VirtualEnvExecute(VirtualEnvExecuteOption),
-    #[command(about = "Virtual Environment Packages", name = "packages")]
-    EnvPackages(PackagesOption),
-    #[command(about = "Python Download", name = "download")]
-    PythonDownload(PythonDownloadOption),
-}
-
-#[derive(Debug, Parser)]
-pub struct PythonDownloadOption {
-    /// Select Python version
-    #[arg(short = 'V', long = "version")]
-    version: SemanticVersion,
-
-    /// Retrieve most recent patch
-    #[arg(short = 'R', long = "recent-patch", default_value = "false")]
-    recent_patch: bool,
-
-    /// List Python version files [No Download]
-    #[arg(short = 'L', long = "list", default_value = "false")]
-    list_structure: bool,
-
-    /// Specify Architecture: [amd64, arm64, n/a]
-    #[arg(short = 'A', long = "arch", default_value = "amd64")]
-    architecture: String,
-
-    /// Specify Platform: [windows, macos, any]
-    #[arg(short = 'P', long = "platform", default_value = "windows")]
-    platform: String,
-
-    /// Specify Package Type: [standard, webinstall, embed, source]
-    #[arg(short = 'T', long = "package-type", default_value = "standard")]
-    package_type: String,
-}
-
-#[derive(Debug, Parser)]
-pub struct VirtualEnvOption {
-    /// Select Python version
-    #[arg(short = 'V', long = "version")]
-    version: SemanticVersion,
-}
-
-#[derive(Debug, Parser)]
-pub struct FixVirtualEnvOption {
-    /// Perform a deep search
-    #[arg(short = 'D', long = "deep-search")]
-    deep_search: bool,
-}
-
-#[derive(Debug, Parser)]
-pub struct VirtualEnvExecuteOption {
-    /// Perform a deep search
-    #[arg(short = 'D', long = "deep-search")]
-    deep_search: bool,
-
-    /// Pass command to each virtual environment
-    #[arg(short = 'C', long = "command", raw(true))]
-    command: String,
-}
-
-/// Virtual Environment Packages
-///
-/// [$ENV placeholder refers to the root path of a Python Virtual Environment]
-#[derive(Debug, Parser)]
-pub struct PackagesOption {
-    /// Perform a deep search
-    #[arg(short = 'D', long = "deep-search")]
-    deep_search: bool,
-
-    /// Save package list for each environment [$ENV/packages.txt]
-    #[arg(short = 'S', long = "save", default_value = "false")]
-    save: bool,
-
-    /// Distill packages by mutual dependencies [With -S: $ENV/distilled_packages.txt]
-    #[arg(short = 'X', long = "distill", default_value = "false")]
-    distill: bool,
-}
-
-#[derive(Debug, Parser)]
-struct RustCommand {
-    #[command(subcommand)]
-    subcommands: RustSubCommands,
-}
-
-#[derive(Debug, Subcommand)]
-enum RustSubCommands {
-    #[command(about = "Generate VSCode Tasks Command", name = "vscode-tasks")]
-    GenerateTasks(GenerateTasksOption),
-}
-
-#[derive(Debug, Parser)]
-pub struct GenerateTasksOption {
-    /// Generate Run Task
-    #[arg(short = 'R', long = "run-task", default_value = "false")]
-    run_task: bool,
-}
-
-#[derive(Debug, Parser)]
-pub struct SearchOption {
-    /// Filename
-    #[arg(short = 'F', long = "filename")]
-    filename: String,
-}
 
 #[tokio::main]
 async fn main() {
@@ -192,6 +68,10 @@ async fn main() {
                     }
                 }
             },
+            Commands::Search(option) => {
+                let command: SearchCommand = SearchCommand::new(option);
+                command.execute_command();
+            }
         },
         Err(opt) => {
             let opt_string: String = opt.to_string();

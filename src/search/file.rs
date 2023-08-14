@@ -6,6 +6,8 @@ use std::fs::{Metadata, ReadDir};
 use std::io;
 use std::path::{Path, PathBuf};
 
+use regex::Regex;
+
 use crate::general::terminal::Terminal;
 use crate::general::terminal::{ANSICode, WhiteANSI, YellowANSI};
 
@@ -132,6 +134,7 @@ pub struct FileSearch {
     root: Option<PathBuf>,
     exclusive_filenames: HashSet<String>,
     exclusive_file_stems: HashSet<String>,
+    exclusive_file_stem_regex: Option<Regex>,
     exclusive_exts: HashSet<String>,
     exclude_dirs: HashSet<PathBuf>,
     quit_directory_on_match: bool,
@@ -142,6 +145,7 @@ impl FileSearch {
         let root: Option<PathBuf> = None;
         let exclusive_filenames: HashSet<String> = HashSet::new();
         let exclusive_file_stems: HashSet<String> = HashSet::new();
+        let exclusive_file_stem_regex: Option<Regex> = None;
         let exclusive_exts: HashSet<String> = HashSet::new();
         let exclude_dirs: HashSet<PathBuf> = HashSet::new();
         let quit_directory_on_match: bool = false;
@@ -150,6 +154,7 @@ impl FileSearch {
             root,
             exclusive_filenames,
             exclusive_file_stems,
+            exclusive_file_stem_regex,
             exclusive_exts,
             exclude_dirs,
             quit_directory_on_match,
@@ -168,20 +173,33 @@ impl FileSearch {
         self.exclusive_filenames = exclusive_filenames;
     }
 
-    pub fn set_exclusive_file_stems(&mut self, file_stems: Vec<&str>) {
-        let mut exclusive_file_stems: HashSet<String> = HashSet::new();
-        for file_stem in file_stems {
-            exclusive_file_stems.insert(file_stem.to_string());
-        }
+    pub fn set_exclusive_file_stems<I, S>(&mut self, file_stems: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let exclusive_file_stems: HashSet<String> = file_stems
+            .into_iter()
+            .map(|file_stem| file_stem.as_ref().to_string())
+            .collect();
+
         self.exclusive_file_stems = exclusive_file_stems;
     }
 
-    pub fn set_exclusive_extensions(&mut self, exts: Vec<&str>) {
-        let mut exclusive_exts: HashSet<String> = HashSet::new();
-        for ext in exts {
-            let ext: String = self.format_extension(ext);
-            exclusive_exts.insert(ext.to_string());
-        }
+    pub fn set_exclusive_file_stem_regex(&mut self, file_stem_regex: &Regex) {
+        self.exclusive_file_stem_regex = Some(file_stem_regex.clone());
+    }
+
+    pub fn set_exclusive_extensions<I, S>(&mut self, exts: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let exclusive_exts: HashSet<String> = exts
+            .into_iter()
+            .map(|ext| self.format_extension(ext.as_ref()))
+            .collect();
+
         self.exclusive_exts = exclusive_exts;
     }
 
@@ -242,9 +260,13 @@ impl FileSearch {
     fn get_filter_validation(&self, path: &PathBuf) -> bool {
         let is_exclusive_filename: bool = self.is_exclusive_filename(path);
         let is_exclusive_file_stem: bool = self.is_exclusive_file_stem(path);
+        let is_exclusive_file_stem_regex: bool = self.is_exclusive_file_stem_regex(path);
         let is_exclusive_extension: bool = self.is_exclusive_extension(path);
-        let filter_validation: bool =
-            is_exclusive_filename && is_exclusive_file_stem && is_exclusive_extension;
+        let filter_validation: bool = is_exclusive_filename
+            && is_exclusive_file_stem
+            && is_exclusive_file_stem_regex
+            && is_exclusive_extension;
+
         filter_validation
     }
 
@@ -294,6 +316,19 @@ impl FileSearch {
             return true;
         }
         false
+    }
+
+    fn is_exclusive_file_stem_regex(&self, path: &PathBuf) -> bool {
+        if self.exclusive_file_stem_regex.is_none() {
+            return true;
+        }
+
+        let file_stem: &OsStr = path.file_stem().unwrap_or_default();
+        let file_stem: String = file_stem.to_string_lossy().to_lowercase();
+
+        let regex: &Regex = self.exclusive_file_stem_regex.as_ref().unwrap();
+        let is_match: bool = regex.is_match(&file_stem);
+        is_match
     }
 
     fn is_exclusive_extension(&self, path: &PathBuf) -> bool {
