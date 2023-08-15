@@ -165,11 +165,16 @@ impl FileSearch {
         self.root = Some(PathBuf::from(root.as_ref()));
     }
 
-    pub fn set_exclusive_filenames(&mut self, filenames: Vec<&str>) {
-        let mut exclusive_filenames: HashSet<String> = HashSet::new();
-        for filename in filenames {
-            exclusive_filenames.insert(filename.to_string());
-        }
+    pub fn set_exclusive_filenames<I, S>(&mut self, filenames: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let exclusive_filenames: HashSet<String> = filenames
+            .into_iter()
+            .map(|filename| filename.as_ref().to_string())
+            .collect();
+
         self.exclusive_filenames = exclusive_filenames;
     }
 
@@ -203,11 +208,16 @@ impl FileSearch {
         self.exclusive_exts = exclusive_exts;
     }
 
-    pub fn set_exclude_directories(&mut self, dirs: Vec<&str>) {
-        let mut exclude_dirs: HashSet<PathBuf> = HashSet::new();
-        for dir in dirs {
-            exclude_dirs.insert(PathBuf::from(dir));
-        }
+    pub fn set_exclude_directories<I, S>(&mut self, dirs: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<Path>,
+    {
+        let exclude_dirs: HashSet<PathBuf> = dirs
+            .into_iter()
+            .map(|dir| PathBuf::from(dir.as_ref()))
+            .collect();
+
         self.exclude_dirs = exclude_dirs;
     }
 
