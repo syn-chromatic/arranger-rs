@@ -1,7 +1,7 @@
 use std::fs::Metadata;
 
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{ANSICode, WhiteANSI, YellowANSI};
+use crate::general::terminal::{WhiteANSI, YellowANSI};
 
 pub struct SearchProgress {
     terminal: Terminal,
@@ -77,6 +77,7 @@ impl SearchProgress {
         let sep: &str = " | ";
         let length: usize = self.terminal.write_separated_parameters(&parts, color, sep);
         self.write_fill_string(length);
+        self.previous_length = length;
     }
 
     fn write_fill_string(&self, length: usize) {
@@ -86,9 +87,9 @@ impl SearchProgress {
     }
 
     fn get_fill(&self, length: usize) -> usize {
+        let length: isize = length as isize;
         let previous_length: isize = self.previous_length as isize;
-        let current_length: isize = length as isize;
-        let fill: isize = previous_length - current_length;
+        let fill: isize = previous_length - length;
         if fill >= 0 {
             return fill as usize;
         }

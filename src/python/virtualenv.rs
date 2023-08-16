@@ -13,7 +13,7 @@ use crate::search::file::FileSearch;
 use crate::search::info::FileInfo;
 
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{ANSICode, CyanANSI, GreenANSI, RedANSI, WhiteANSI};
+use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
 
 use crate::utils::confirm_and_continue;
 
