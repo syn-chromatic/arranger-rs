@@ -1,17 +1,16 @@
 use std::collections::HashSet;
 use std::env;
-
 use std::io;
 use std::path::PathBuf;
 
 use regex::Regex;
 
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{ANSICode, CyanANSI, WhiteANSI};
-use crate::general::terminal::{GreenANSI, RedANSI, YellowANSI};
+use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI, YellowANSI};
 
 use crate::general::path::WPath;
 use crate::search::file::FileSearch;
+use crate::search::info::FileInfo;
 use crate::SearchOption;
 
 pub struct SearchCommand {
@@ -42,21 +41,18 @@ impl SearchCommand {
             file_search.set_quit_directory_on_match(quit_directory_on_match);
 
             self.set_file_search_file_stem(&mut file_search);
-
-            let files: HashSet<PathBuf> = file_search.search_files();
+            let files: HashSet<FileInfo> = file_search.search_files();
             if !files.is_empty() {
-                self.terminal.writeln_color("\nFiles:", GreenANSI);
+                self.terminal.writeln_color("\nFiles:", &GreenANSI);
 
-                for file in files {
-                    let file: WPath = file.into();
-                    let path_str: String = format!("[{:?}]", file);
-                    let parts: [&str; 2] = ["Path: ", &path_str];
-                    let colors: [Box<dyn ANSICode>; 2] = [CyanANSI.boxed(), WhiteANSI.boxed()];
-                    self.terminal.writeln_color_p(&parts, &colors);
+                for file_info in files {
+                    self.print_file_info_path(&file_info);
+                    self.print_file_info_metadata(&file_info);
+                    println!();
                 }
             } else {
                 self.terminal
-                    .writeln_color("\nNo files were found.", RedANSI);
+                    .writeln_color("\nNo files were found.", &RedANSI);
             }
         }
     }
@@ -73,7 +69,7 @@ impl SearchCommand {
                     file_search.set_exclusive_file_stem_regex(&regex);
                 } else {
                     let error: String = regex.unwrap_err().to_string();
-                    self.terminal.writeln_color(&error, RedANSI);
+                    self.terminal.writeln_color(&error, &RedANSI);
                     return;
                 }
             } else {
@@ -99,8 +95,41 @@ impl SearchCommand {
             "Filename: [{}] | Extensions: {:?} | Regex: [{}]\n",
             filename, extensions, regex
         );
-        self.terminal.write_color("Search Parameters: ", YellowANSI);
+
+        self.terminal
+            .write_color("Search Parameters: ", &YellowANSI);
         self.terminal.write(&parameters);
         println!();
+    }
+
+    fn print_file_info_path(&self, file_info: &FileInfo) {
+        let file: WPath = file_info.get_path().into();
+        let path_str: String = format!("[{:?}]", file);
+        let parts: [&str; 2] = ["Path: ", &path_str];
+        self.terminal.writeln_parameter(&parts, &CyanANSI);
+    }
+
+    fn print_file_info_metadata(&self, file_info: &FileInfo) {
+        let size: String = file_info.get_formatted_size();
+        let size_str: String = format!("[{}]", size);
+        let creation: String = file_info.get_formatted_creation_time();
+        let creation_str: String = format!("[{}]", creation);
+        let modified: String = file_info.get_formatted_modified_time();
+        let modified_str: String = format!("[{}]", modified);
+
+        let parts: [&str; 6] = [
+            "Size: ",
+            &size_str,
+            "Created: ",
+            &creation_str,
+            "Modified: ",
+            &modified_str,
+        ];
+
+        let color: &CyanANSI = &CyanANSI;
+        let sep: &str = " | ";
+
+        self.terminal
+            .writeln_separated_parameters(&parts, color, sep);
     }
 }

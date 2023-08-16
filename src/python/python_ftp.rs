@@ -191,7 +191,7 @@ impl PythonFTPRetriever {
             }
 
             let parts: [&str; 2] = ["\rVersion: ", &version.get_string()];
-            terminal.write_2p_primary(&parts, YellowANSI);
+            terminal.write_parameter(&parts, &YellowANSI);
 
             let patch: usize = version.get_patch();
             version.set_patch(patch + 1);

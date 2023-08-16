@@ -61,15 +61,15 @@ impl CommandResponse {
         if let Some(exit_code) = exit_code {
             if exit_code == 0 && self.stderr.is_empty() {
                 let string: String = format!("{}", self.stdout.trim());
-                self.terminal.writeln_color(&string, GreenANSI);
-                self.terminal.writeln_color(&separator, YellowANSI);
+                self.terminal.writeln_color(&string, &GreenANSI);
+                self.terminal.writeln_color(&separator, &YellowANSI);
                 return;
             }
         }
 
         let string: String = format!("{}", self.stderr.trim());
-        self.terminal.writeln_color(&string, RedANSI);
-        self.terminal.writeln_color(&separator, YellowANSI);
+        self.terminal.writeln_color(&string, &RedANSI);
+        self.terminal.writeln_color(&separator, &YellowANSI);
     }
 }
 
@@ -112,7 +112,7 @@ impl CommandExecute {
             stderr_handle.map(|handle| handle.join().unwrap());
 
             let separator: String = "-".repeat(10);
-            terminal.writeln_color(&separator, YellowANSI);
+            terminal.writeln_color(&separator, &YellowANSI);
         }
     }
 }
@@ -145,7 +145,7 @@ impl CommandExecute {
 
             let string: Result<&str, str::Utf8Error> = str::from_utf8(&buffer[..size]);
             if let Ok(string) = string {
-                terminal.write_color(string, GreenANSI);
+                terminal.write_color(string, &GreenANSI);
             } else {
                 let error: str::Utf8Error = string.unwrap_err();
                 Self::write_spawn_error(Box::new(error), &terminal);
@@ -165,7 +165,7 @@ impl CommandExecute {
 
             let string: Result<&str, str::Utf8Error> = str::from_utf8(&buffer[..size]);
             if let Ok(string) = string {
-                terminal.write_color(string, RedANSI);
+                terminal.write_color(string, &RedANSI);
             } else {
                 let error: str::Utf8Error = string.unwrap_err();
                 Self::write_spawn_error(Box::new(error), &terminal);
@@ -176,6 +176,6 @@ impl CommandExecute {
 
     fn write_spawn_error(error: Box<dyn Error>, terminal: &Terminal) {
         let error_string: String = error.to_string();
-        terminal.writeln_color(&error_string, RedANSI);
+        terminal.writeln_color(&error_string, &RedANSI);
     }
 }

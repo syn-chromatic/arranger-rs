@@ -8,7 +8,6 @@ use std::str::SplitWhitespace;
 use dirs;
 
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{ANSICode, WhiteANSI};
 use crate::general::terminal::{GreenANSI, RedANSI, YellowANSI};
 
 use crate::commands::configuration::FixVirtualEnvOption;
@@ -81,7 +80,7 @@ impl PythonFixEnvCommand {
 
             let directory_string: String = format!("{:?}", environment_directory);
             let parts: [&str; 2] = ["Attempting Environment Fix: ", &directory_string];
-            self.terminal.writeln_2p_primary(&parts, YellowANSI);
+            self.terminal.writeln_parameter(&parts, &YellowANSI);
 
             let version: SemanticVersion = venv_cfg.version_info;
             let cfg_file: WPath = venv_cfg.cfg_file;
@@ -115,8 +114,7 @@ impl PythonFixEnvCommand {
         let deep_search: bool = self.option.deep_search;
         let parameters: String = format!("Deep Search: [{}]", deep_search);
         let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
-        self.terminal.writeln_color_p(&parts, &colors);
+        self.terminal.writeln_parameter(&parts, &YellowANSI);
         println!();
     }
 }
@@ -138,7 +136,7 @@ impl PythonExecuteCommand {
 
         let command_string: String = format!("[{}]\n", self.option.command);
         let parts: [&str; 2] = ["Command: ", &command_string];
-        self.terminal.writeln_2p_primary(&parts, YellowANSI);
+        self.terminal.writeln_parameter(&parts, &YellowANSI);
 
         let args: Vec<&str> = self.get_command_args();
         let venv_search: VirtualEnvSearch = VirtualEnvSearch::new(deep_search);
@@ -153,7 +151,7 @@ impl PythonExecuteCommand {
 
             if let Some(environment) = environment {
                 let string: String = format!("[Environment -> {:?}]", env_directory);
-                self.terminal.writeln_color(&string, YellowANSI);
+                self.terminal.writeln_color(&string, &YellowANSI);
 
                 let virtual_env: VirtualEnv = VirtualEnv::new(&environment);
                 virtual_env.execute_custom_command(&args);
@@ -177,7 +175,7 @@ impl PythonExecuteCommand {
         let deep_search: bool = self.option.deep_search;
         let parameters: String = format!("Deep Search: [{}]", deep_search);
         let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        self.terminal.writeln_2p_primary(&parts, YellowANSI);
+        self.terminal.writeln_parameter(&parts, &YellowANSI);
         println!();
     }
 }
@@ -210,7 +208,7 @@ impl PythonPackagesCommand {
 
             if let Ok(packages) = packages {
                 let string: String = format!("[Environment -> {:?}]", env_dir);
-                self.terminal.writeln_color(&string, YellowANSI);
+                self.terminal.writeln_color(&string, &YellowANSI);
 
                 self.list_packages(&packages);
 
@@ -237,8 +235,7 @@ impl PythonPackagesCommand {
             deep_search, distilled, save
         );
         let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
-        self.terminal.writeln_color_p(&parts, &colors);
+        self.terminal.writeln_parameter(&parts, &YellowANSI);
         println!();
     }
 
@@ -290,7 +287,7 @@ impl PythonPackagesCommand {
 
         let packages_length: String = packages.len().to_string();
         let parts: [&str; 2] = ["Total Packages: ", &packages_length];
-        self.terminal.writeln_2p_primary(&parts, YellowANSI);
+        self.terminal.writeln_parameter(&parts, &YellowANSI);
     }
 
     fn save_packages(&self, env_dir: &WPath, packages: &Vec<PipPackage>) {
@@ -306,8 +303,7 @@ impl PythonPackagesCommand {
         let terminal = Terminal::new();
         let path_str: String = format!("[{:?}]", file_path);
         let parts: [&str; 2] = ["Packages List Saved: ", &path_str];
-        let colors: [Box<dyn ANSICode>; 2] = [GreenANSI.boxed(), WhiteANSI.boxed()];
-        terminal.writeln_color_p(&parts, &colors);
+        terminal.writeln_parameter(&parts, &GreenANSI);
     }
 }
 
@@ -342,25 +338,22 @@ impl PythonDLCommand {
 
         if let Some(url) = url {
             let parts: [&str; 2] = ["Found version: ", url];
-            let colors: [Box<dyn ANSICode>; 2] = [GreenANSI.boxed(), WhiteANSI.boxed()];
-            terminal.writeln_color_p(&parts, &colors);
+            terminal.writeln_parameter(&parts, &GreenANSI);
 
             let http: HTTP = HTTP::new();
             let result: Result<String, Box<dyn Error>> = http.download_file(&url).await;
             if let Ok(file_name) = result {
                 let parts: [&str; 2] = ["File Downloaded: ", &file_name];
-                let colors: [Box<dyn ANSICode>; 2] = [GreenANSI.boxed(), WhiteANSI.boxed()];
-                terminal.writeln_color_p(&parts, &colors);
+                terminal.writeln_parameter(&parts, &GreenANSI);
                 return;
             } else {
                 let error: String = result.unwrap_err().to_string();
                 let parts: [&str; 2] = ["Error: ", &error];
-                let colors: [Box<dyn ANSICode>; 2] = [RedANSI.boxed(), WhiteANSI.boxed()];
-                terminal.writeln_color_p(&parts, &colors);
+                terminal.writeln_parameter(&parts, &RedANSI);
             }
         }
         let string: &str = "Python version not found.";
-        terminal.writeln_color(&string, RedANSI);
+        terminal.writeln_color(&string, &RedANSI);
     }
 
     async fn get_url(
@@ -396,7 +389,6 @@ impl PythonDLCommand {
             arch, platform, package_type
         );
         let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        let colors: [Box<dyn ANSICode>; 2] = [YellowANSI.boxed(), WhiteANSI.boxed()];
-        terminal.writeln_color_p(&parts, &colors);
+        terminal.writeln_parameter(&parts, &YellowANSI);
     }
 }

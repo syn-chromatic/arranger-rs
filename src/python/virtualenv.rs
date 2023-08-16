@@ -10,6 +10,7 @@ use crate::parsers::cfg_parser::CFGParser;
 use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
 use crate::search::file::FileSearch;
+use crate::search::info::FileInfo;
 
 use crate::general::terminal::Terminal;
 use crate::general::terminal::{ANSICode, CyanANSI, GreenANSI, RedANSI, WhiteANSI};
@@ -180,19 +181,19 @@ impl VirtualEnv {
 
     fn print_installing_package(&self) {
         let string: &str = "[Installing Virtual Environment Package]\n";
-        self.terminal.writeln_color(string, CyanANSI);
+        self.terminal.writeln_color(string, &CyanANSI);
     }
 
     fn print_creating_environment(&self) {
         let version: &SemanticVersion = self.environment.get_python_version();
         let version_string: String = version.get_2p_string();
         let string: String = format!("[Creating Python {} Environment]\n", version_string);
-        self.terminal.writeln_color(&string, CyanANSI);
+        self.terminal.writeln_color(&string, &CyanANSI);
     }
 
     fn print_executing_custom_command(&self) {
         let string: &str = "[Executing command]\n";
-        self.terminal.writeln_color(string, CyanANSI);
+        self.terminal.writeln_color(string, &CyanANSI);
     }
 }
 
@@ -210,19 +211,20 @@ impl VirtualEnvSearch {
 
         let mut venv_cfgs: Vec<VirtualEnvCFG> = Vec::new();
         if let Ok(current_dir) = current_dir {
-            let cfg_files: HashSet<PathBuf> = self.find_config(&current_dir);
+            let cfg_files: HashSet<FileInfo> = self.find_config(&current_dir);
 
             if !self.confirm_search(&cfg_files) {
                 return venv_cfgs;
             }
 
-            for cfg_file in cfg_files {
+            for file_info in cfg_files {
+                let cfg_file: &PathBuf = file_info.get_path();
                 let cfg_parser: CFGParser = CFGParser::new();
-                let result: Result<Vec<CFGLine>, io::Error> = cfg_parser.from_file(&cfg_file);
+                let result: Result<Vec<CFGLine>, io::Error> = cfg_parser.from_file(cfg_file);
 
                 if let Ok(result) = result {
-                    let cfg_path: WPath = WPath::from_path_buf(&cfg_file);
-                    let venv_cfg: Option<VirtualEnvCFG> = VirtualEnvCFG::new(cfg_path, &result);
+                    let cfg_file: WPath = WPath::from_path_buf(cfg_file);
+                    let venv_cfg: Option<VirtualEnvCFG> = VirtualEnvCFG::new(cfg_file, &result);
                     if let Some(venv_cfg) = venv_cfg {
                         venv_cfgs.push(venv_cfg);
                     }
@@ -234,7 +236,7 @@ impl VirtualEnvSearch {
 }
 
 impl VirtualEnvSearch {
-    fn find_config(&self, root: &PathBuf) -> HashSet<PathBuf> {
+    fn find_config(&self, root: &PathBuf) -> HashSet<FileInfo> {
         let mut file_search: FileSearch = FileSearch::new();
 
         let exclusive_filenames: Vec<&str> = vec!["pyvenv.cfg"];
@@ -248,32 +250,31 @@ impl VirtualEnvSearch {
         file_search.set_exclude_directories(exclude_dirs);
         file_search.set_quit_directory_on_match(quit_directory_on_match);
 
-        let files: HashSet<PathBuf> = file_search.search_files();
+        let files: HashSet<FileInfo> = file_search.search_files();
         files
     }
 
-    fn confirm_search(&self, files: &HashSet<PathBuf>) -> bool {
+    fn confirm_search(&self, files: &HashSet<FileInfo>) -> bool {
         let terminal: Terminal = Terminal::new();
 
         if files.len() == 0 {
             let string: &str =
                 "\nNo environments were found.\nTry creating one with: arranger python venv\n";
-            terminal.writeln_color(string, RedANSI);
+            terminal.writeln_color(string, &RedANSI);
             return false;
         }
 
-        terminal.writeln_color("\nFound Environments:", GreenANSI);
+        terminal.writeln_color("\nFound Environments:", &GreenANSI);
 
         for file in files {
-            let mut environment_directory: WPath = file.into();
+            let mut environment_directory: WPath = file.get_path().into();
             environment_directory.to_directory();
 
             let directory_string = environment_directory.get_canonical_string();
             if let Some(directory_string) = directory_string {
                 let path_str: String = format!("[{}]", directory_string);
                 let parts: [&str; 2] = ["Path: ", &path_str];
-                let colors: [Box<dyn ANSICode>; 2] = [CyanANSI.boxed(), WhiteANSI.boxed()];
-                terminal.writeln_color_p(&parts, &colors);
+                terminal.writeln_parameter(&parts, &CyanANSI);
             }
         }
         confirm_and_continue()

@@ -10,23 +10,23 @@ pub fn confirm_and_continue() -> bool {
     let mut input: String = String::new();
 
     let string: &str = "\nDo you want to continue? [y/N]: ";
-    terminal.write_color(string, CyanANSI);
+    terminal.write_color(string, &CyanANSI);
 
     match io::stdin().read_line(&mut input) {
         Ok(_) => {
             if input.trim() == "y" || input.trim() == "Y" {
                 let string: &str = "Continuing...\n\n";
-                terminal.writeln_color(string, GreenANSI);
+                terminal.writeln_color(string, &GreenANSI);
                 return true;
             } else {
                 let string: &str = "Not continuing...\n";
-                terminal.writeln_color(string, RedANSI);
+                terminal.writeln_color(string, &RedANSI);
                 return false;
             }
         }
         Err(e) => {
             let string: String = format!("Failed to read line: {}\n", e);
-            terminal.writeln_color(&string, RedANSI);
+            terminal.writeln_color(&string, &RedANSI);
             return false;
         }
     }
@@ -64,18 +64,18 @@ pub fn print_options(opt_string: &str) {
                 if let Some(split) = split {
                     let parts: [&str; 2] = [split.0, split.1];
                     if split.1.is_empty() {
-                        terminal.writeln_2p_primary(&parts, YellowANSI);
+                        terminal.writeln_parameter(&parts, &YellowANSI);
                     } else {
-                        terminal.writeln_2p_primary(&parts, RedANSI);
+                        terminal.writeln_parameter(&parts, &RedANSI);
                     }
                     continue;
                 }
                 if idx == 0 {
-                    terminal.writeln_color(&line, GreenANSI);
+                    terminal.writeln_color(&line, &GreenANSI);
                     continue;
                 }
             }
         }
-        terminal.writeln_color(&line, WhiteANSI);
+        terminal.writeln_color(&line, &WhiteANSI);
     }
 }
