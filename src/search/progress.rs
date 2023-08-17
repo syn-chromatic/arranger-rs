@@ -34,13 +34,13 @@ impl SearchProgress {
         self.search_counter += 1;
     }
 
+    pub fn increment_match(&mut self) {
+        self.match_counter += 1;
+    }
+
     pub fn add_search_bytes(&mut self, metadata: &Metadata) {
         let bytes: u64 = metadata.len();
         self.search_bytes += bytes;
-    }
-
-    pub fn increment_match(&mut self) {
-        self.match_counter += 1;
     }
 
     pub fn show_progress(&mut self) {
