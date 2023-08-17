@@ -3,6 +3,8 @@ use std::fs::Metadata;
 use crate::general::terminal::Terminal;
 use crate::general::terminal::{WhiteANSI, YellowANSI};
 
+use crate::search::formatters::format_size;
+
 pub struct SearchProgress {
     terminal: Terminal,
     search_counter: usize,
@@ -63,7 +65,8 @@ impl SearchProgress {
     fn write_progress(&mut self) {
         let match_string: String = self.match_counter.to_string();
         let search_string: String = self.search_counter.to_string();
-        let size_string: String = self.get_formatted_size();
+        let size_string: String = format_size(self.search_bytes);
+
         let parts: [&str; 6] = [
             "\rMatch: ",
             &match_string,
@@ -94,21 +97,5 @@ impl SearchProgress {
             return fill as usize;
         }
         0
-    }
-
-    fn get_formatted_size(&self) -> String {
-        const KB: f64 = (1u64 << 10) as f64;
-        const MB: f64 = (1u64 << 20) as f64;
-        const GB: f64 = (1u64 << 30) as f64;
-        const TB: f64 = (1u64 << 40) as f64;
-
-        let search_bytes: f64 = self.search_bytes as f64;
-        match search_bytes {
-            _ if search_bytes <= KB => format!("{:.2} B", search_bytes),
-            _ if search_bytes < MB => format!("{:.2} KB", search_bytes / KB),
-            _ if search_bytes < GB => format!("{:.2} MB", search_bytes / MB),
-            _ if search_bytes < TB => format!("{:.2} GB", search_bytes / GB),
-            _ => format!("{:.2} TB", search_bytes / TB),
-        }
     }
 }

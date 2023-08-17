@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::collections::LinkedList;
 use std::env;
 use std::ffi::OsStr;
+use std::fs::DirEntry;
 use std::fs::{Metadata, ReadDir};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -274,6 +275,30 @@ impl FileSearch {
         false
     }
 
+    fn handle_entry(
+        &self,
+        entry: &DirEntry,
+        files: &mut HashSet<FileInfo>,
+        additional_directories: &mut LinkedList<PathBuf>,
+        search_progress: &mut SearchProgress,
+    ) {
+        if let Ok(metadata) = entry.metadata() {
+            search_progress.show_progress();
+            let path: PathBuf = entry.path();
+
+            if metadata.is_file() {
+                let is_match: bool = self.handle_file(metadata, path, files, search_progress);
+                if is_match && self.quit_directory_on_match {
+                    return;
+                }
+            } else if metadata.is_dir() {
+                if !metadata.is_symlink() {
+                    additional_directories.push_back(path);
+                }
+            }
+        }
+    }
+
     fn walker(
         &self,
         entries: ReadDir,
@@ -285,22 +310,7 @@ impl FileSearch {
 
         for entry in entries {
             if let Ok(entry) = entry.as_ref() {
-                if let Ok(metadata) = entry.metadata() {
-                    search_progress.show_progress();
-                    let path: PathBuf = entry.path();
-
-                    if metadata.is_file() {
-                        let is_match: bool =
-                            self.handle_file(metadata, path, files, search_progress);
-                        if is_match && self.quit_directory_on_match {
-                            return;
-                        }
-                    } else if metadata.is_dir() {
-                        if !metadata.is_symlink() {
-                            additional_directories.push_back(path);
-                        }
-                    }
-                }
+                self.handle_entry(entry, files, &mut additional_directories, search_progress);
             }
         }
 
