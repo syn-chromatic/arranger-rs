@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use regex::Regex;
 
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{ANSICode, WhiteANSI, YellowANSI};
+use crate::general::terminal::YellowANSI;
 use crate::search::info::FileInfo;
 use crate::search::progress::SearchProgress;
 
