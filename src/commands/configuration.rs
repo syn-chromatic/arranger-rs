@@ -118,11 +118,11 @@ pub struct RustCommand {
 #[derive(Debug, Subcommand)]
 pub enum RustSubCommands {
     #[command(about = "Generate VSCode Tasks Command", name = "vscode-tasks")]
-    GenerateTasks(GenerateTasksOption),
+    RustVSCodeTasks(RustVSCodeTasksOption),
 }
 
 #[derive(Debug, Parser)]
-pub struct GenerateTasksOption {
+pub struct  RustVSCodeTasksOption {
     /// Generate Run Task
     #[arg(short = 'R', long = "run-task", default_value = "false")]
     pub run_task: bool,

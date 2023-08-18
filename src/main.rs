@@ -23,9 +23,9 @@ use crate::commands::python::PythonDLCommand;
 use crate::commands::python::PythonExecuteCommand;
 use crate::commands::python::PythonFixEnvCommand;
 use crate::commands::python::PythonPackagesCommand;
+use crate::commands::rust::RustVSCodeTaskCommand;
 use crate::commands::search::SearchCommand;
 
-use crate::rust::tasks::generate_rust_run_task;
 use crate::utils::print_options;
 
 #[tokio::main]
@@ -62,10 +62,9 @@ async fn main() {
                 }
             },
             Commands::Rust(rust_opt) => match rust_opt.subcommands {
-                RustSubCommands::GenerateTasks(option) => {
-                    if option.run_task {
-                        generate_rust_run_task();
-                    }
+                RustSubCommands::RustVSCodeTasks(option) => {
+                    let command: RustVSCodeTaskCommand = RustVSCodeTaskCommand::new(option);
+                    command.execute_command();
                 }
             },
             Commands::Search(option) => {
