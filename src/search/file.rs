@@ -9,8 +9,6 @@ use std::path::{Path, PathBuf};
 
 use regex::Regex;
 
-use crate::general::terminal::Terminal;
-use crate::general::terminal::YellowANSI;
 use crate::search::info::FileInfo;
 use crate::search::progress::SearchProgress;
 
@@ -90,14 +88,14 @@ impl FileSearch {
         let mut exclusive_exts: HashSet<String> = HashSet::new();
 
         for ext in exts {
-            let ext: String = self.format_extension(ext.as_ref());
+            let ext: String = ext.as_ref().trim().to_lowercase();
             exclusive_exts.insert(ext);
         }
 
         self.exclusive_exts = exclusive_exts;
     }
 
-    pub fn set_exclude_directories<I, S>(&mut self, dirs: I)
+    pub fn set_exclude_directories<I, S>(&mut self, dirs: I) -> Result<(), io::Error>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<Path>,
@@ -106,10 +104,12 @@ impl FileSearch {
 
         for dir in dirs {
             let dir: PathBuf = PathBuf::from(dir.as_ref());
-            exclude_dirs.insert(dir);
+            let dir_canon: PathBuf = dir.canonicalize()?;
+            exclude_dirs.insert(dir_canon);
         }
 
         self.exclude_dirs = exclude_dirs;
+        Ok(())
     }
 
     pub fn set_quit_directory_on_match(&mut self, state: bool) {
@@ -121,12 +121,14 @@ impl FileSearch {
         let mut queue: LinkedList<PathBuf> = LinkedList::new();
         let mut search_progress: SearchProgress = SearchProgress::new();
 
-        let root: PathBuf = self.get_root_path();
-        self.print_search_initialize(&root);
-        queue.push_back(root);
+        let root: Result<PathBuf, io::Error> = self.get_root_path();
+        if let Ok(root) = root {
+            search_progress.show_root_search(&root);
+            queue.push_back(root);
 
-        while let Some(current_dir) = queue.pop_front() {
-            self.search(&current_dir, &mut files, &mut queue, &mut search_progress);
+            while let Some(current_dir) = queue.pop_front() {
+                self.search(&current_dir, &mut files, &mut queue, &mut search_progress);
+            }
         }
 
         search_progress.finalize();
@@ -135,61 +137,38 @@ impl FileSearch {
 }
 
 impl FileSearch {
-    fn print_search_initialize(&self, root: &PathBuf) {
-        let mut string: String = root.to_string_lossy().to_string();
-
-        let stripped_string: Option<&str> = string.strip_prefix(r"\\?\");
-        if let Some(stripped_string) = stripped_string {
-            string = stripped_string.to_string();
-        }
-
-        let terminal: Terminal = Terminal::new();
-        let path_string: String = format!("[{}]", string);
-        let parts: [&str; 2] = ["Searching In: ", &path_string];
-        terminal.writeln_parameter(&parts, &YellowANSI);
-    }
-
-    fn format_extension(&self, ext: &str) -> String {
-        let mut ext: String = ext.trim().to_lowercase();
-        if !ext.is_empty() && !ext.starts_with('.') {
-            ext.insert(0, '.');
-        }
-        ext
-    }
-
-    fn get_filter_validation(&self, path: &PathBuf) -> bool {
+    fn evaluate_entry_criteria(&self, path: &PathBuf) -> bool {
         let is_exclusive_filename: bool = self.is_exclusive_filename(path);
         let is_exclusive_file_stem: bool = self.is_exclusive_file_stem(path);
         let is_exclusive_file_stem_regex: bool = self.is_exclusive_file_stem_regex(path);
         let is_exclusive_extension: bool = self.is_exclusive_extension(path);
-        let filter_validation: bool = is_exclusive_filename
+        let entry_criteria: bool = is_exclusive_filename
             && is_exclusive_file_stem
             && is_exclusive_file_stem_regex
             && is_exclusive_extension;
 
-        filter_validation
+        entry_criteria
     }
 
-    fn get_abs_path(&self) -> PathBuf {
-        env::current_dir().unwrap()
+    fn get_root_path(&self) -> Result<PathBuf, io::Error> {
+        let root: PathBuf = if let Some(root) = &self.root {
+            root.to_path_buf()
+        } else {
+            env::current_dir().unwrap()
+        };
+
+        let root: Result<PathBuf, io::Error> = root.canonicalize();
+        root
     }
 
-    fn get_root_path(&self) -> PathBuf {
-        if let Some(root) = &self.root {
-            return root.clone();
-        }
-        self.get_abs_path()
-    }
-
-    fn is_same_directory(&self, file: &PathBuf, dir: &PathBuf) -> bool {
-        if dir.exists() {
-            for ancestor in file.ancestors() {
-                if ancestor == dir {
-                    return true;
-                }
+    fn is_same_directory(&self, path: &PathBuf, dir: &PathBuf) -> bool {
+        if path.is_file() {
+            let path_parent: Option<&Path> = path.parent();
+            if let Some(path_parent) = path_parent {
+                return dir == path_parent;
             }
         }
-        false
+        dir == path
     }
 
     fn is_exclusive_filename(&self, path: &PathBuf) -> bool {
@@ -197,12 +176,10 @@ impl FileSearch {
             return true;
         }
 
-        let p_filename: &OsStr = path.file_name().unwrap_or_default();
-        let p_filename: String = p_filename.to_string_lossy().to_lowercase();
-        if self.exclusive_filenames.contains(&p_filename) {
-            return true;
-        }
-        false
+        let filename: &OsStr = path.file_name().unwrap_or_default();
+        let filename: String = filename.to_string_lossy().to_lowercase();
+        let filename_exists: bool = self.exclusive_filenames.contains(&filename);
+        filename_exists
     }
 
     fn is_exclusive_file_stem(&self, path: &PathBuf) -> bool {
@@ -212,10 +189,8 @@ impl FileSearch {
 
         let file_stem: &OsStr = path.file_stem().unwrap_or_default();
         let file_stem: String = file_stem.to_string_lossy().to_lowercase();
-        if self.exclusive_file_stems.contains(&file_stem) {
-            return true;
-        }
-        false
+        let file_stem_exists: bool = self.exclusive_file_stems.contains(&file_stem);
+        file_stem_exists
     }
 
     fn is_exclusive_file_stem_regex(&self, path: &PathBuf) -> bool {
@@ -238,7 +213,6 @@ impl FileSearch {
 
         let file_ext: &OsStr = path.extension().unwrap_or_default();
         let file_ext: String = file_ext.to_string_lossy().to_lowercase();
-        let file_ext: String = self.format_extension(&file_ext);
 
         if self.exclusive_exts.contains(&file_ext) {
             return true;
@@ -253,8 +227,7 @@ impl FileSearch {
         }
 
         for dir in &self.exclude_dirs {
-            let same_directory: bool = self.is_same_directory(path, dir);
-            if same_directory {
+            if self.is_same_directory(path, dir) {
                 return true;
             }
         }
@@ -268,12 +241,12 @@ impl FileSearch {
         files: &mut HashSet<FileInfo>,
         search_progress: &mut SearchProgress,
     ) -> bool {
-        let filter_validation: bool = self.get_filter_validation(&file);
+        let entry_criteria: bool = self.evaluate_entry_criteria(&file);
 
         search_progress.increment_search();
-        search_progress.add_search_bytes(&metadata);
+        search_progress.increment_search_bytes(&metadata);
 
-        if !files.contains(&file) && filter_validation {
+        if !files.contains(&file) && entry_criteria {
             let file_info: FileInfo = FileInfo::new(file, metadata);
             files.insert(file_info);
             search_progress.increment_match();
@@ -331,15 +304,13 @@ impl FileSearch {
         queue: &mut LinkedList<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
-        if let Ok(root) = root.canonicalize() {
-            if self.is_excluded_directory(&root) {
-                return;
-            }
+        if self.is_excluded_directory(&root) {
+            return;
+        }
 
-            let entries: Result<ReadDir, io::Error> = root.read_dir();
-            if let Ok(entries) = entries {
-                self.walker(entries, files, queue, search_progress);
-            }
+        let entries: Result<ReadDir, io::Error> = root.read_dir();
+        if let Ok(entries) = entries {
+            self.walker(entries, files, queue, search_progress);
         }
     }
 }

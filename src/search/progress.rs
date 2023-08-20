@@ -1,9 +1,12 @@
 use std::fs::Metadata;
+use std::path::PathBuf;
+use std::time::Instant;
 
 use crate::general::terminal::Terminal;
 use crate::general::terminal::{WhiteANSI, YellowANSI};
 
 use crate::search::formatters::format_size;
+use crate::search::formatters::format_time;
 
 pub struct SearchProgress {
     terminal: Terminal,
@@ -11,6 +14,7 @@ pub struct SearchProgress {
     match_counter: usize,
     search_bytes: u64,
     previous_length: usize,
+    time: Instant,
 }
 
 impl SearchProgress {
@@ -20,6 +24,7 @@ impl SearchProgress {
         let match_counter: usize = 0;
         let search_bytes: u64 = 0;
         let previous_length: usize = 0;
+        let time: Instant = Instant::now();
 
         SearchProgress {
             terminal,
@@ -27,6 +32,7 @@ impl SearchProgress {
             match_counter,
             search_bytes,
             previous_length,
+            time,
         }
     }
 
@@ -38,7 +44,7 @@ impl SearchProgress {
         self.match_counter += 1;
     }
 
-    pub fn add_search_bytes(&mut self, metadata: &Metadata) {
+    pub fn increment_search_bytes(&mut self, metadata: &Metadata) {
         let bytes: u64 = metadata.len();
         self.search_bytes += bytes;
     }
@@ -49,15 +55,16 @@ impl SearchProgress {
         }
     }
 
+    pub fn show_root_search(&self, root: &PathBuf) {
+        let path_string: String = self.get_path_string(root);
+        let formatted_path: String = format!("[{}]", path_string);
+        let parts: [&str; 2] = ["Searching In: ", &formatted_path];
+        self.terminal.writeln_parameter(&parts, &YellowANSI);
+    }
+
     pub fn finalize(&mut self) {
         self.write_progress();
         println!();
-    }
-
-    pub fn reset(&mut self) {
-        self.search_counter = 0;
-        self.match_counter = 0;
-        self.previous_length = 0;
     }
 }
 
@@ -66,14 +73,17 @@ impl SearchProgress {
         let match_string: String = self.match_counter.to_string();
         let search_string: String = self.search_counter.to_string();
         let size_string: String = format_size(self.search_bytes);
+        let time_string: String = format_time(self.time.elapsed().as_nanos());
 
-        let parts: [&str; 6] = [
-            "\rMatch: ",
+        let parts: [&str; 8] = [
+            "\rMatches: ",
             &match_string,
-            "Searched Items: ",
+            "Searches: ",
             &search_string,
-            "Searched Size: ",
+            "Search Size: ",
             &size_string,
+            "Elapsed Time: ",
+            &time_string,
         ];
 
         let color: &YellowANSI = &YellowANSI;
@@ -87,6 +97,16 @@ impl SearchProgress {
         let fill: usize = self.get_fill(length);
         let fill_string: String = " ".repeat(fill);
         self.terminal.write_color(&fill_string, &WhiteANSI);
+    }
+
+    fn get_path_string(&self, path: &PathBuf) -> String {
+        let mut path_string: String = path.to_string_lossy().to_string();
+
+        let stripped_path: Option<&str> = path_string.strip_prefix(r"\\?\");
+        if let Some(stripped_path) = stripped_path {
+            path_string = stripped_path.to_string();
+        }
+        path_string
     }
 
     fn get_fill(&self, length: usize) -> usize {

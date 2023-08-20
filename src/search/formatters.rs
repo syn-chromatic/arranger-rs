@@ -17,6 +17,20 @@ pub fn format_size(bytes: u64) -> String {
     }
 }
 
+pub fn format_time(nanoseconds: u128) -> String {
+    const US: f64 = 1_000.0;
+    const MS: f64 = 1_000_000.0;
+    const S: f64 = 1_000_000_000.0;
+
+    let nanoseconds: f64 = nanoseconds as f64;
+    match nanoseconds {
+        _ if nanoseconds < US => format!("{:.2} ns", nanoseconds),
+        _ if nanoseconds < MS => format!("{:.2} µs", nanoseconds / US),
+        _ if nanoseconds < S => format!("{:.2} ms", nanoseconds / MS),
+        _ => format!("{:.2} s", nanoseconds / S),
+    }
+}
+
 pub fn format_system_time(time: SystemTime, fmt: &str) -> String {
     let date_time: DateTime<Local> = DateTime::<Local>::from(time);
     let string: String = date_time.format(fmt).to_string();

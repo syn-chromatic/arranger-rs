@@ -122,7 +122,7 @@ pub enum RustSubCommands {
 }
 
 #[derive(Debug, Parser)]
-pub struct  RustVSCodeTasksOption {
+pub struct RustVSCodeTasksOption {
     /// Generate Run Task
     #[arg(short = 'R', long = "run-task", default_value = "false")]
     pub run_task: bool,
