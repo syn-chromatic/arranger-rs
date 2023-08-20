@@ -54,10 +54,11 @@ impl FileSearch {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let exclusive_filenames: HashSet<String> = filenames
-            .into_iter()
-            .map(|filename| filename.as_ref().to_string())
-            .collect();
+        let mut exclusive_filenames: HashSet<String> = HashSet::new();
+        for filename in filenames {
+            let filename: String = filename.as_ref().to_string().to_lowercase();
+            exclusive_filenames.insert(filename);
+        }
 
         self.exclusive_filenames = exclusive_filenames;
     }
@@ -67,10 +68,12 @@ impl FileSearch {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let exclusive_file_stems: HashSet<String> = file_stems
-            .into_iter()
-            .map(|file_stem| file_stem.as_ref().to_string())
-            .collect();
+        let mut exclusive_file_stems: HashSet<String> = HashSet::new();
+
+        for file_stem in file_stems {
+            let file_stem: String = file_stem.as_ref().to_string().to_lowercase();
+            exclusive_file_stems.insert(file_stem);
+        }
 
         self.exclusive_file_stems = exclusive_file_stems;
     }
@@ -84,10 +87,12 @@ impl FileSearch {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let exclusive_exts: HashSet<String> = exts
-            .into_iter()
-            .map(|ext| self.format_extension(ext.as_ref()))
-            .collect();
+        let mut exclusive_exts: HashSet<String> = HashSet::new();
+
+        for ext in exts {
+            let ext: String = self.format_extension(ext.as_ref());
+            exclusive_exts.insert(ext);
+        }
 
         self.exclusive_exts = exclusive_exts;
     }
@@ -97,10 +102,12 @@ impl FileSearch {
         I: IntoIterator<Item = S>,
         S: AsRef<Path>,
     {
-        let exclude_dirs: HashSet<PathBuf> = dirs
-            .into_iter()
-            .map(|dir| PathBuf::from(dir.as_ref()))
-            .collect();
+        let mut exclude_dirs: HashSet<PathBuf> = HashSet::new();
+
+        for dir in dirs {
+            let dir: PathBuf = PathBuf::from(dir.as_ref());
+            exclude_dirs.insert(dir);
+        }
 
         self.exclude_dirs = exclude_dirs;
     }
