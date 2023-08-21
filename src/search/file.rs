@@ -127,7 +127,7 @@ impl FileSearch {
             queue.push_back(root);
 
             while let Some(current_dir) = queue.pop_front() {
-                let _ = self.walker(&current_dir, &mut files, &mut queue, &mut search_progress);
+                self.walker(&current_dir, &mut files, &mut queue, &mut search_progress);
             }
         }
 
@@ -290,11 +290,12 @@ impl FileSearch {
             return;
         }
 
-        let mut sub_directories: LinkedList<PathBuf> = LinkedList::new();
         let entries: ReadDir = match root.read_dir() {
             Ok(entries) => entries,
             Err(_) => return,
         };
+
+        let mut sub_directories: LinkedList<PathBuf> = LinkedList::new();
 
         for entry in entries {
             if let Ok(entry) = entry.as_ref() {

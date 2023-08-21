@@ -32,11 +32,9 @@ impl SearchCommand {
 
         if let Ok(root) = current_dir {
             let exclusive_exts: &Vec<String> = &self.option.extensions;
-            let quit_directory_on_match: bool = false;
 
             file_search.set_root(root);
             file_search.set_exclusive_extensions(exclusive_exts);
-            file_search.set_quit_directory_on_match(quit_directory_on_match);
 
             self.set_file_search_file_stem(&mut file_search);
             let files: HashSet<FileInfo> = file_search.search_files();
