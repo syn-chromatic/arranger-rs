@@ -123,7 +123,7 @@ impl FileSearch {
 
         let root: Result<PathBuf, io::Error> = self.get_root_path();
         if let Ok(root) = root {
-            search_progress.write_search_path(&root);
+            search_progress.display_search_path(&root);
             queue.push_back(root);
 
             while let Some(current_dir) = queue.pop_front() {
@@ -131,7 +131,7 @@ impl FileSearch {
             }
         }
 
-        search_progress.write_finalize();
+        search_progress.display_progress_finalize();
         files
     }
 }
@@ -243,13 +243,13 @@ impl FileSearch {
     ) -> bool {
         let entry_criteria: bool = self.evaluate_entry_criteria(&file);
 
-        search_progress.increment_search();
-        search_progress.increment_search_bytes(&metadata);
+        search_progress.increment_search_count();
+        search_progress.add_search_bytes(&metadata);
 
         if !files.contains(&file) && entry_criteria {
             let file_info: FileInfo = FileInfo::new(file, metadata);
             files.insert(file_info);
-            search_progress.increment_match();
+            search_progress.increment_match_count();
             return true;
         }
         false
@@ -263,7 +263,7 @@ impl FileSearch {
         search_progress: &mut SearchProgress,
     ) {
         if let Ok(metadata) = entry.metadata() {
-            search_progress.write_progress();
+            search_progress.display_progress();
             let path: PathBuf = entry.path();
 
             if metadata.is_file() {
