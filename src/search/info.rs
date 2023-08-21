@@ -27,7 +27,7 @@ impl FileInfo {
     }
 
     pub fn get_formatted_size(&self) -> String {
-        let bytes: u64 = self.metadata.len();
+        let bytes: usize = self.metadata.len() as usize;
         let string: String = format_size(bytes);
         string
     }
@@ -42,7 +42,7 @@ impl FileInfo {
         "N/A".to_string()
     }
 
-    pub fn get_formatted_modified_time(&self) -> String {
+    pub fn get_formatted_modification_time(&self) -> String {
         let modified: Result<SystemTime, io::Error> = self.metadata.modified();
         if let Ok(modified) = modified {
             let fmt: &str = "%Y-%m-%d %H:%M:%S";

@@ -1,11 +1,11 @@
 use chrono::{DateTime, Local};
 use std::time::SystemTime;
 
-pub fn format_size(bytes: u64) -> String {
-    const KB: f64 = (1u64 << 10) as f64;
-    const MB: f64 = (1u64 << 20) as f64;
-    const GB: f64 = (1u64 << 30) as f64;
-    const TB: f64 = (1u64 << 40) as f64;
+pub fn format_size(bytes: usize) -> String {
+    const KB: f64 = (1usize << 10) as f64;
+    const MB: f64 = (1usize << 20) as f64;
+    const GB: f64 = (1usize << 30) as f64;
+    const TB: f64 = (1usize << 40) as f64;
 
     let bytes: f64 = bytes as f64;
     match bytes {

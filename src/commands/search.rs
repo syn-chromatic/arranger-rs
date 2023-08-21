@@ -110,7 +110,7 @@ impl SearchCommand {
         let size_str: String = format!("[{}]", size);
         let creation: String = file_info.get_formatted_creation_time();
         let creation_str: String = format!("[{}]", creation);
-        let modified: String = file_info.get_formatted_modified_time();
+        let modified: String = file_info.get_formatted_modification_time();
         let modified_str: String = format!("[{}]", modified);
 
         let parts: [&str; 6] = [
