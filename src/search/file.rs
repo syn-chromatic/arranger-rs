@@ -127,7 +127,7 @@ impl FileSearch {
             queue.push_back(root);
 
             while let Some(current_dir) = queue.pop_front() {
-                self.search(&current_dir, &mut files, &mut queue, &mut search_progress);
+                let _ = self.walker(&current_dir, &mut files, &mut queue, &mut search_progress);
             }
         }
 
@@ -259,7 +259,7 @@ impl FileSearch {
         &self,
         entry: &DirEntry,
         files: &mut HashSet<FileInfo>,
-        additional_directories: &mut LinkedList<PathBuf>,
+        sub_directories: &mut LinkedList<PathBuf>,
         search_progress: &mut SearchProgress,
     ) {
         if let Ok(metadata) = entry.metadata() {
@@ -273,31 +273,13 @@ impl FileSearch {
                 }
             } else if metadata.is_dir() {
                 if !metadata.is_symlink() {
-                    additional_directories.push_back(path);
+                    sub_directories.push_back(path);
                 }
             }
         }
     }
 
     fn walker(
-        &self,
-        entries: ReadDir,
-        files: &mut HashSet<FileInfo>,
-        queue: &mut LinkedList<PathBuf>,
-        search_progress: &mut SearchProgress,
-    ) {
-        let mut additional_directories: LinkedList<PathBuf> = LinkedList::new();
-
-        for entry in entries {
-            if let Ok(entry) = entry.as_ref() {
-                self.handle_entry(entry, files, &mut additional_directories, search_progress);
-            }
-        }
-
-        queue.append(&mut additional_directories);
-    }
-
-    fn search(
         &self,
         root: &PathBuf,
         files: &mut HashSet<FileInfo>,
@@ -308,9 +290,18 @@ impl FileSearch {
             return;
         }
 
-        let entries: Result<ReadDir, io::Error> = root.read_dir();
-        if let Ok(entries) = entries {
-            self.walker(entries, files, queue, search_progress);
+        let mut sub_directories: LinkedList<PathBuf> = LinkedList::new();
+        let entries: ReadDir = match root.read_dir() {
+            Ok(entries) => entries,
+            Err(_) => return,
+        };
+
+        for entry in entries {
+            if let Ok(entry) = entry.as_ref() {
+                self.handle_entry(entry, files, &mut sub_directories, search_progress);
+            }
         }
+
+        queue.append(&mut sub_directories);
     }
 }
