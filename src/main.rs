@@ -28,7 +28,7 @@ use crate::commands::python::PythonPackagesCommand;
 use crate::commands::rust::RustVSCodeTaskCommand;
 use crate::commands::search::SearchCommand;
 
-use crate::utils::print_options;
+use crate::utils::OptionsPrinter;
 
 #[tokio::main]
 async fn main() {
@@ -76,7 +76,8 @@ async fn main() {
         },
         Err(opt) => {
             let opt_string: String = opt.to_string();
-            print_options(&opt_string);
+            let options_printer: OptionsPrinter = OptionsPrinter::new();
+            options_printer.print(&opt_string);
         }
     }
 }

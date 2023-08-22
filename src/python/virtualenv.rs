@@ -15,7 +15,7 @@ use crate::search::info::FileInfo;
 use crate::general::terminal::Terminal;
 use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
 
-use crate::utils::confirm_and_continue;
+use crate::utils::ConfirmationPrompt;
 
 #[derive(Debug)]
 pub struct VirtualEnvCFG {
@@ -273,6 +273,7 @@ impl VirtualEnvSearch {
                 terminal.writeln_parameter(&parts, &CyanANSI);
             }
         }
-        confirm_and_continue()
+
+        ConfirmationPrompt::prompt(&terminal)
     }
 }

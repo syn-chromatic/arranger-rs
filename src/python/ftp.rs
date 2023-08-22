@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::io;
 
-use scraper::{Html, Selector};
+use regex::Regex;
 
 use crate::general::https::HTTPS;
 use crate::general::terminal::Terminal;
@@ -28,31 +28,6 @@ impl LinkType {
         }
         None
     }
-}
-
-pub async fn get_file_structure(
-    url: &str,
-) -> Result<HashSet<LinkType>, Box<dyn std::error::Error>> {
-    let https: HTTPS = HTTPS::new();
-    let resp: String = https.get_response_body(url).await?;
-
-    let fragment: Html = Html::parse_document(&resp);
-    let selector: Selector = Selector::parse("a").unwrap();
-
-    let mut links: HashSet<LinkType> = HashSet::new();
-
-    for element in fragment.select(&selector) {
-        let link: String = element.value().attr("href").unwrap_or("").to_string();
-        if link != "../" {
-            let link_type = if link.ends_with('/') {
-                LinkType::Directory(link)
-            } else {
-                LinkType::File(link)
-            };
-            links.insert(link_type);
-        }
-    }
-    Ok(links)
 }
 
 pub struct FileStructure {
@@ -128,16 +103,14 @@ impl FileStructure {
 
     async fn build_file_structure(url: &str) -> Result<HashSet<LinkType>, Box<dyn Error>> {
         let https: HTTPS = HTTPS::new();
-        let resp: String = https.get_response_body(url).await?;
-
-        let fragment: Html = Html::parse_document(&resp);
-        let selector: Selector = Selector::parse("a").unwrap();
+        let body: String = https.get_response_body(url).await?;
 
         let mut links: HashSet<LinkType> = HashSet::new();
+        let regex: Regex = Regex::new(r#"<a href="(.*?)""#).unwrap();
 
-        for element in fragment.select(&selector) {
-            let link: String = element.value().attr("href").unwrap_or("").to_string();
-            let link_type: Option<LinkType> = LinkType::new(&link);
+        for capture in regex.captures_iter(&body) {
+            let link: &str = &capture[1];
+            let link_type: Option<LinkType> = LinkType::new(link);
             if let Some(link_type) = link_type {
                 links.insert(link_type);
             }
