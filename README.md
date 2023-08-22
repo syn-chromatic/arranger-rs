@@ -1,9 +1,11 @@
-## Arranger
+## `⌽` Arranger
 Arranger is a command-line utility designed to streamline development workflows in multiple programming languages.
 
+<br>
 
 ```
-Tip: when inputting a parameter for a command that contains spaces, always wrap it around quotation marks.
+Tip: when inputting a parameter that contains spaces for a command,
+always wrap it around quotation marks.
 
 # Example
 arranger search -F "some name"
@@ -11,8 +13,10 @@ arranger search -F "some name"
 
 ___
 ### `➢` Status
-`Project in development.`\
-`Currently only tested on Windows.`
+```
+Project in development.
+Currently only tested on Windows.
+```
 
 ___
 ### `➢` Features
