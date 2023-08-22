@@ -2,12 +2,15 @@ use std::collections::HashSet;
 use std::env;
 use std::io;
 use std::path::PathBuf;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
 use regex::Regex;
 
 use crate::general::terminal::Terminal;
 use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI, YellowANSI};
 
+use crate::commands::configuration::SearchSort;
 use crate::general::path::WPath;
 use crate::search::file::FileSearch;
 use crate::search::info::FileInfo;
@@ -25,6 +28,8 @@ impl SearchCommand {
     }
 
     pub fn execute_command(&self) {
+        println!("Sorting: {:?}", &self.option.sort);
+
         let mut file_search: FileSearch = FileSearch::new();
 
         self.print_search_parameters();
@@ -36,7 +41,9 @@ impl SearchCommand {
                 Err(_) => return,
             };
 
-            let files: HashSet<FileInfo> = file_search.search_files();
+            let mut files_hashset: HashSet<FileInfo> = file_search.search_files();
+            let mut files: Vec<FileInfo> = files_hashset.drain().collect();
+            self.sort_files(&mut files);
             self.print_files(&files);
         }
     }
@@ -93,7 +100,60 @@ impl SearchCommand {
         ""
     }
 
-    fn print_files(&self, files: &HashSet<FileInfo>) {
+    fn sort_files(&self, files: &mut Vec<FileInfo>) {
+        if let Some(sort) = &self.option.sort {
+            match sort {
+                SearchSort::SizeAsc => self.sort_ascending_by_size(files),
+                SearchSort::SizeDesc => self.sort_descending_by_size(files),
+                SearchSort::CreatedAsc => self.sort_ascending_by_created(files),
+                SearchSort::CreatedDesc => self.sort_descending_by_created(files),
+                SearchSort::ModifiedAsc => self.sort_ascending_by_modified(files),
+                SearchSort::ModifiedDesc => self.sort_descending_by_modified(files),
+            }
+        }
+    }
+
+    fn sort_ascending_by_size(&self, files: &mut Vec<FileInfo>) {
+        files.sort_by(|a, b| a.get_size().cmp(&b.get_size()));
+    }
+
+    fn sort_descending_by_size(&self, files: &mut Vec<FileInfo>) {
+        files.sort_by(|a, b| b.get_size().cmp(&a.get_size()));
+    }
+
+    fn sort_ascending_by_created(&self, files: &mut Vec<FileInfo>) {
+        files.sort_by(|a, b| {
+            let time_a: SystemTime = a.get_created_time().unwrap_or(UNIX_EPOCH);
+            let time_b: SystemTime = b.get_created_time().unwrap_or(UNIX_EPOCH);
+            time_a.cmp(&time_b)
+        });
+    }
+
+    fn sort_descending_by_created(&self, files: &mut Vec<FileInfo>) {
+        files.sort_by(|a, b| {
+            let time_a: SystemTime = a.get_created_time().unwrap_or(UNIX_EPOCH);
+            let time_b: SystemTime = b.get_created_time().unwrap_or(UNIX_EPOCH);
+            time_b.cmp(&time_a)
+        });
+    }
+
+    fn sort_ascending_by_modified(&self, files: &mut Vec<FileInfo>) {
+        files.sort_by(|a, b| {
+            let time_a: SystemTime = a.get_created_time().unwrap_or(UNIX_EPOCH);
+            let time_b: SystemTime = b.get_created_time().unwrap_or(UNIX_EPOCH);
+            time_a.cmp(&time_b)
+        });
+    }
+
+    fn sort_descending_by_modified(&self, files: &mut Vec<FileInfo>) {
+        files.sort_by(|a, b| {
+            let time_a: SystemTime = a.get_modified_time().unwrap_or(UNIX_EPOCH);
+            let time_b: SystemTime = b.get_modified_time().unwrap_or(UNIX_EPOCH);
+            time_b.cmp(&time_a)
+        });
+    }
+
+    fn print_files(&self, files: &Vec<FileInfo>) {
         if !files.is_empty() {
             self.terminal.writeln_color("\nFiles:", &GreenANSI);
 
@@ -135,9 +195,9 @@ impl SearchCommand {
     fn print_file_info_metadata(&self, file_info: &FileInfo) {
         let size: String = file_info.get_formatted_size();
         let size_str: String = format!("[{}]", size);
-        let creation: String = file_info.get_formatted_creation_time();
+        let creation: String = file_info.get_formatted_created_time();
         let creation_str: String = format!("[{}]", creation);
-        let modified: String = file_info.get_formatted_modification_time();
+        let modified: String = file_info.get_formatted_modified_time();
         let modified_str: String = format!("[{}]", modified);
 
         let parts: [&str; 6] = [

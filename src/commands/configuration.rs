@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use clap::{Parser, Subcommand};
 
 use crate::general::version::SemanticVersion;
@@ -142,7 +144,37 @@ pub struct SearchOption {
     #[arg(short = 'X', long = "exclude-dir", default_value = None)]
     pub excluded_dirs: Vec<String>,
 
+    /// Specify Sorting Of Results [size_asc, size_desc, created_asc, created_desc, modified_asc, modified_desc]
+    #[arg(short = 'S', long = "sort")]
+    pub sort: Option<SearchSort>,
+
     /// Enable the regex engine for pattern matching
     #[arg(short = 'R', long = "regex", default_value = "false")]
     pub regex: bool,
+}
+
+#[derive(Debug, Clone)]
+pub enum SearchSort {
+    SizeAsc,
+    SizeDesc,
+    CreatedAsc,
+    CreatedDesc,
+    ModifiedAsc,
+    ModifiedDesc,
+}
+
+impl FromStr for SearchSort {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "size_asc" => Ok(Self::SizeAsc),
+            "size_desc" => Ok(Self::SizeDesc),
+            "created_asc" => Ok(Self::CreatedAsc),
+            "created_desc" => Ok(Self::CreatedDesc),
+            "modified_asc" => Ok(Self::ModifiedAsc),
+            "modified_desc" => Ok(Self::ModifiedDesc),
+            _ => Err(format!("Invalid Sorting Option")),
+        }
+    }
 }

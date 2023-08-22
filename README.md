@@ -137,6 +137,7 @@ ___
     -F/--filename : Specify Filename [Searches by whole name when used without regex]
     -E/--extensions : Specify Extensions [Can be used multiple times to add items]
     -X/--exclude-dir : Specify Directory To Exclude [Can be used multiple times to add items]
+    -S/--sort : Specify Sorting Of Results [size_asc, size_desc, created_asc, created_desc, modified_asc, modified_desc]
     -R/--regex : Enable the regex engine for pattern matching
 
     Examples:
@@ -154,6 +155,9 @@ ___
 
     # Search for file with excluded directories
     arranger search -F some_file -X some_directory -X other_directory/another_directory
+
+    # Search for file by name with results sorted by ascending size
+    arranger search -F some_file -S size_asc
     ```
 
 ___

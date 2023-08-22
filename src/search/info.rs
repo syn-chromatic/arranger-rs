@@ -26,13 +26,28 @@ impl FileInfo {
         &self.metadata
     }
 
+    pub fn get_size(&self) -> usize {
+        let size: usize = self.metadata.len() as usize;
+        size
+    }
+
+    pub fn get_created_time(&self) -> Result<SystemTime, io::Error> {
+        let created: Result<SystemTime, io::Error> = self.metadata.created();
+        created
+    }
+
+    pub fn get_modified_time(&self) -> Result<SystemTime, io::Error> {
+        let modified: Result<SystemTime, io::Error> = self.metadata.modified();
+        modified
+    }
+
     pub fn get_formatted_size(&self) -> String {
         let bytes: usize = self.metadata.len() as usize;
         let string: String = format_size(bytes);
         string
     }
 
-    pub fn get_formatted_creation_time(&self) -> String {
+    pub fn get_formatted_created_time(&self) -> String {
         let created: Result<SystemTime, io::Error> = self.metadata.created();
         if let Ok(created) = created {
             let fmt: &str = "%Y-%m-%d %H:%M:%S";
@@ -42,7 +57,7 @@ impl FileInfo {
         "N/A".to_string()
     }
 
-    pub fn get_formatted_modification_time(&self) -> String {
+    pub fn get_formatted_modified_time(&self) -> String {
         let modified: Result<SystemTime, io::Error> = self.metadata.modified();
         if let Ok(modified) = modified {
             let fmt: &str = "%Y-%m-%d %H:%M:%S";
