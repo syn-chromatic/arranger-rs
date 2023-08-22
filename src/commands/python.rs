@@ -22,7 +22,7 @@ use crate::general::version::SemanticVersion;
 
 use crate::python::pip::{PipMetadata, PipPackage, PipPackageParser};
 use crate::python::python::PythonEnvironment;
-use crate::python::python_ftp::PythonFTPRetriever;
+use crate::python::ftp::PythonFTPRetriever;
 use crate::python::virtualenv::VirtualEnv;
 use crate::python::virtualenv::VirtualEnvCFG;
 use crate::python::virtualenv::VirtualEnvSearch;
