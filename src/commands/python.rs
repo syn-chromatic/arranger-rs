@@ -16,7 +16,7 @@ use crate::commands::configuration::PythonDownloadOption;
 use crate::commands::configuration::VirtualEnvExecuteOption;
 use crate::commands::configuration::VirtualEnvOption;
 
-use crate::general::http::HTTP;
+use crate::general::https::HTTPS;
 use crate::general::path::WPath;
 use crate::general::version::SemanticVersion;
 
@@ -340,8 +340,8 @@ impl PythonDLCommand {
             let parts: [&str; 2] = ["Found version: ", url];
             terminal.writeln_parameter(&parts, &GreenANSI);
 
-            let http: HTTP = HTTP::new();
-            let result: Result<String, Box<dyn Error>> = http.download_file(&url).await;
+            let https: HTTPS = HTTPS::new();
+            let result: Result<String, Box<dyn Error>> = https.download_file(&url).await;
             if let Ok(file_name) = result {
                 let parts: [&str; 2] = ["File Downloaded: ", &file_name];
                 terminal.writeln_parameter(&parts, &GreenANSI);

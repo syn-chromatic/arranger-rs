@@ -5,7 +5,7 @@ use std::io;
 
 use scraper::{Html, Selector};
 
-use crate::general::http::HTTP;
+use crate::general::https::HTTPS;
 use crate::general::terminal::Terminal;
 use crate::general::terminal::YellowANSI;
 use crate::general::version::{PreRelease, SemanticVersion};
@@ -33,8 +33,8 @@ impl LinkType {
 pub async fn get_file_structure(
     url: &str,
 ) -> Result<HashSet<LinkType>, Box<dyn std::error::Error>> {
-    let http: HTTP = HTTP::new();
-    let resp: String = http.get_response_body(url).await?;
+    let https: HTTPS = HTTPS::new();
+    let resp: String = https.get_response_body(url).await?;
 
     let fragment: Html = Html::parse_document(&resp);
     let selector: Selector = Selector::parse("a").unwrap();
@@ -127,8 +127,8 @@ impl FileStructure {
     }
 
     async fn build_file_structure(url: &str) -> Result<HashSet<LinkType>, Box<dyn Error>> {
-        let http: HTTP = HTTP::new();
-        let resp: String = http.get_response_body(url).await?;
+        let https: HTTPS = HTTPS::new();
+        let resp: String = https.get_response_body(url).await?;
 
         let fragment: Html = Html::parse_document(&resp);
         let selector: Selector = Selector::parse("a").unwrap();

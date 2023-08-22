@@ -15,15 +15,15 @@ use hyper::Response;
 use hyper::Uri;
 use hyper_tls::HttpsConnector;
 
-pub struct HTTP {
+pub struct HTTPS {
     client: Client<HttpsConnector<HttpConnector>>,
 }
 
-impl HTTP {
+impl HTTPS {
     pub fn new() -> Self {
         let https: HttpsConnector<HttpConnector> = HttpsConnector::new();
         let client: Client<HttpsConnector<HttpConnector>> = Self::get_client(https);
-        HTTP { client }
+        HTTPS { client }
     }
 
     pub async fn download_file(&self, url: &str) -> Result<String, Box<dyn Error>> {
@@ -43,7 +43,7 @@ impl HTTP {
     }
 }
 
-impl HTTP {
+impl HTTPS {
     async fn download(&self, uri: &Uri) -> Result<hyper::Response<Body>, Box<dyn Error>> {
         let req: Request<Body> = self.get_request_body(uri).map_err(Box::new)?;
         let resp: Response<Body> = self.client.request(req).await.map_err(Box::new)?;
