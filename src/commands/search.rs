@@ -153,11 +153,24 @@ impl SearchCommand {
         });
     }
 
+    fn get_files_iterator<'a>(
+        &self,
+        files: &'a Vec<FileInfo>,
+    ) -> Box<dyn Iterator<Item = &'a FileInfo> + 'a> {
+        if let Some(limit) = self.option.limit {
+            return Box::new(files.iter().take(limit));
+        } else {
+            return Box::new(files.iter());
+        }
+    }
+
     fn print_files(&self, files: &Vec<FileInfo>) {
         if !files.is_empty() {
-            self.terminal.writeln_color("\nFiles:", &GreenANSI);
+            let files_iterator: Box<dyn Iterator<Item = &FileInfo>> =
+                self.get_files_iterator(files);
 
-            for file_info in files {
+            self.terminal.writeln_color("\nFiles:", &GreenANSI);
+            for file_info in files_iterator {
                 self.print_file_info_path(&file_info);
                 self.print_file_info_metadata(&file_info);
                 println!();

@@ -148,6 +148,10 @@ pub struct SearchOption {
     #[arg(short = 'S', long = "sort")]
     pub sort: Option<SearchSort>,
 
+    /// Specify Limit For Results
+    #[arg(short = 'L', long = "limit")]
+    pub limit: Option<usize>,
+
     /// Enable the regex engine for pattern matching
     #[arg(short = 'R', long = "regex", default_value = "false")]
     pub regex: bool,

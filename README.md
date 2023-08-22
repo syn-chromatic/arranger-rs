@@ -138,6 +138,7 @@ ___
     -E/--extensions : Specify Extensions [Can be used multiple times to add items]
     -X/--exclude-dir : Specify Directory To Exclude [Can be used multiple times to add items]
     -S/--sort : Specify Sorting Of Results [size_asc, size_desc, created_asc, created_desc, modified_asc, modified_desc]
+    -L/--limit : Specify Limit For Results
     -R/--regex : Enable the regex engine for pattern matching
 
     Examples:
@@ -158,6 +159,9 @@ ___
 
     # Search for file by name with results sorted by ascending size
     arranger search -F some_file -S size_asc
+
+    # Search for file by name with results limited to 50
+    arranger search -F some_file -L 50
     ```
 
 ___
