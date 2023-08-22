@@ -1,8 +1,6 @@
 ## Arranger
 Arranger is a command-line utility designed to streamline development workflows in multiple programming languages.
 
-`Project in development.`\
-`Currently only tested on Windows.`
 
 ```
 Tip: when inputting a parameter for a command that contains spaces, always wrap it around quotation marks.
@@ -10,6 +8,12 @@ Tip: when inputting a parameter for a command that contains spaces, always wrap 
 # Example
 arranger search -F "some name"
 ```
+
+___
+### `➢` Status
+`Project in development.`\
+`Currently only tested on Windows.`
+
 ___
 ### `➢` Features
 #### `⤷` Python Tools
