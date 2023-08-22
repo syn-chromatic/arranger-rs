@@ -31,30 +31,41 @@ impl SearchCommand {
         let current_dir: Result<PathBuf, io::Error> = env::current_dir();
 
         if let Ok(root) = current_dir {
-            let exclusive_exts: &Vec<String> = &self.option.extensions;
+            match self.set_file_search_parameters(&root, &mut file_search) {
+                Ok(_) => {}
+                Err(_) => return,
+            };
 
-            file_search.set_root(root);
-            file_search.set_exclusive_extensions(exclusive_exts);
-
-            self.set_file_search_file_stem(&mut file_search);
             let files: HashSet<FileInfo> = file_search.search_files();
-            if !files.is_empty() {
-                self.terminal.writeln_color("\nFiles:", &GreenANSI);
-
-                for file_info in files {
-                    self.print_file_info_path(&file_info);
-                    self.print_file_info_metadata(&file_info);
-                    println!();
-                }
-            } else {
-                self.terminal
-                    .writeln_color("\nNo files were found.", &RedANSI);
-            }
+            self.print_files(&files);
         }
     }
 }
 
 impl SearchCommand {
+    fn set_file_search_parameters(
+        &self,
+        root: &PathBuf,
+        file_search: &mut FileSearch,
+    ) -> Result<(), io::Error> {
+        let exclusive_exts: &Vec<String> = &self.option.extensions;
+        let excluded_dirs: &Vec<String> = &self.option.excluded_dirs;
+
+        file_search.set_root(root);
+        file_search.set_exclusive_extensions(exclusive_exts);
+        let exclusion_result: Result<(), io::Error> =
+            file_search.set_exclude_directories(excluded_dirs);
+
+        if let Err(exclusion_error) = exclusion_result {
+            let parts: [&str; 2] = ["Directory Exclusion Error: ", &exclusion_error.to_string()];
+            self.terminal.writeln_parameter(&parts, &RedANSI);
+            return Err(exclusion_error);
+        }
+
+        self.set_file_search_file_stem(file_search);
+        Ok(())
+    }
+
     fn set_file_search_file_stem(&self, file_search: &mut FileSearch) {
         let filename: &Option<String> = &self.option.filename;
 
@@ -82,14 +93,30 @@ impl SearchCommand {
         ""
     }
 
+    fn print_files(&self, files: &HashSet<FileInfo>) {
+        if !files.is_empty() {
+            self.terminal.writeln_color("\nFiles:", &GreenANSI);
+
+            for file_info in files {
+                self.print_file_info_path(&file_info);
+                self.print_file_info_metadata(&file_info);
+                println!();
+            }
+        } else {
+            self.terminal
+                .writeln_color("\nNo files were found.", &RedANSI);
+        }
+    }
+
     fn print_search_parameters(&self) {
         let filename: &str = self.get_filename_or_default();
         let extensions: &Vec<String> = &self.option.extensions;
+        let excluded_dirs: &Vec<String> = &self.option.excluded_dirs;
         let regex: bool = self.option.regex;
 
         let parameters: String = format!(
-            "Filename: [{}] | Extensions: {:?} | Regex: [{}]\n",
-            filename, extensions, regex
+            "Filename: [{}] | Extensions: {:?} | Excluded Dirs: {:?} | Regex: [{}]\n",
+            filename, extensions, excluded_dirs, regex
         );
 
         self.terminal

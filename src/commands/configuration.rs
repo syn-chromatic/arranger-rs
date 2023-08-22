@@ -138,6 +138,10 @@ pub struct SearchOption {
     #[arg(short = 'E', long = "extensions", default_value = None)]
     pub extensions: Vec<String>,
 
+    /// Specify Directory To Exclude [Can be used multiple times to add items]
+    #[arg(short = 'X', long = "exclude-dir", default_value = None)]
+    pub excluded_dirs: Vec<String>,
+
     /// Enable the regex engine for pattern matching
     #[arg(short = 'R', long = "regex", default_value = "false")]
     pub regex: bool,

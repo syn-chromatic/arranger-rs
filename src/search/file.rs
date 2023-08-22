@@ -103,9 +103,9 @@ impl FileSearch {
         let mut exclude_dirs: HashSet<PathBuf> = HashSet::new();
 
         for dir in dirs {
-            let dir: PathBuf = PathBuf::from(dir.as_ref());
-            let dir_canon: PathBuf = dir.canonicalize()?;
-            exclude_dirs.insert(dir_canon);
+            let directory: PathBuf = PathBuf::from(dir.as_ref());
+            let canonical_directory: PathBuf = self.canonicalize_directory(&directory)?;
+            exclude_dirs.insert(canonical_directory);
         }
 
         self.exclude_dirs = exclude_dirs;
@@ -137,6 +137,35 @@ impl FileSearch {
 }
 
 impl FileSearch {
+    fn canonicalize_directory(&self, directory: &PathBuf) -> Result<PathBuf, io::Error> {
+        let canonical_directory: Result<PathBuf, io::Error> = directory.canonicalize();
+        if let Ok(canonical_directory) = canonical_directory {
+            if canonical_directory.is_file() {
+                let error: io::Error = self.get_path_is_file_error();
+                return Err(error);
+            }
+            return Ok(canonical_directory);
+        }
+
+        let error: io::Error = self.get_invalid_directory_error(directory);
+        return Err(error);
+    }
+
+    fn get_path_is_file_error(&self) -> io::Error {
+        let path_is_file: String = format!("Path provided is a file, not a directory.");
+        let error: io::Error = io::Error::new(io::ErrorKind::Other, path_is_file);
+        error
+    }
+
+    fn get_invalid_directory_error(&self, directory: &PathBuf) -> io::Error {
+        let unavailable_dir: String = format!(
+            "Path provided [{}] cannot be found.",
+            directory.to_string_lossy()
+        );
+        let error: io::Error = io::Error::new(io::ErrorKind::Other, unavailable_dir);
+        error
+    }
+
     fn evaluate_entry_criteria(&self, path: &PathBuf) -> bool {
         let is_exclusive_filename: bool = self.is_exclusive_filename(path);
         let is_exclusive_file_stem: bool = self.is_exclusive_file_stem(path);

@@ -3,6 +3,13 @@ Arranger is a command-line utility designed to streamline development workflows 
 
 `Project in development.`\
 `Currently only tested on Windows.`
+
+```
+Tip: when inputting a parameter for a command that contains spaces, always wrap it around quotation marks.
+
+# Example
+arranger search -F "some name"
+```
 ___
 ### `➢` Features
 #### `⤷` Python Tools
@@ -121,20 +128,24 @@ ___
     Options:
     -F/--filename : Specify Filename [Searches by whole name when used without regex]
     -E/--extensions : Specify Extensions [Can be used multiple times to add items]
+    -X/--exclude-dir : Specify Directory To Exclude [Can be used multiple times to add items]
     -R/--regex : Enable the regex engine for pattern matching
 
     Examples:
     # Search for file by name
-    arranger search -F somefile
+    arranger search -F some_file
 
     # Search for file by name with specific extension
-    arranger search -F somefile -E zip
+    arranger search -F some_file -E zip
 
     # Search for any file with multiple extensions
     arranger search -E zip -E rar -E tar
 
     # Search for file with regex
     arranger search -F .*some$ -R
+
+    # Search for file with excluded directories
+    arranger search -F some_file -X some_directory -X other_directory/another_directory
     ```
 
 ___
