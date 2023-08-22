@@ -149,12 +149,20 @@ pub struct SearchOption {
     pub sort: Option<SearchSort>,
 
     /// Specify Limit For Results
-    #[arg(short = 'L', long = "limit")]
+    #[arg(short = 'L', long = "limit", value_parser = parse_search_option_limit)]
     pub limit: Option<usize>,
 
     /// Enable the regex engine for pattern matching
     #[arg(short = 'R', long = "regex", default_value = "false")]
     pub regex: bool,
+}
+
+fn parse_search_option_limit(value: &str) -> Result<usize, &'static str> {
+    match value.parse::<usize>() {
+        Ok(0) => Err("value must be greater than 0"),
+        Ok(val) => Ok(val),
+        Err(_) => Err("invalid digit found in string"),
+    }
 }
 
 #[derive(Debug, Clone)]
