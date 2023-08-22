@@ -1,3 +1,4 @@
+mod ansi_support;
 mod commands;
 mod general;
 mod parsers;
@@ -10,7 +11,8 @@ use std::io;
 
 use clap::error::Error as ClapError;
 use clap::Parser;
-use enable_ansi_support::enable_ansi_support;
+
+use crate::ansi_support::lib::AnsiSupport;
 
 use crate::commands::configuration::Cli;
 use crate::commands::configuration::Commands;
@@ -30,7 +32,7 @@ use crate::utils::print_options;
 
 #[tokio::main]
 async fn main() {
-    let ansi_support: Result<(), io::Error> = enable_ansi_support();
+    let ansi_support: Result<(), io::Error> = AnsiSupport::enable();
 
     if let Err(_) = ansi_support {
         println!("WARNING: ANSI Color Code support is not supported on this platform.");
