@@ -28,8 +28,6 @@ impl SearchCommand {
     }
 
     pub fn execute_command(&self) {
-        println!("Sorting: {:?}", &self.option.sort);
-
         let mut file_search: FileSearch = FileSearch::new();
 
         self.print_search_parameters();
