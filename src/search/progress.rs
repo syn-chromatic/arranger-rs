@@ -96,7 +96,7 @@ impl SearchProgress {
     fn write_space_fill(&self, length: usize) {
         let fill_length: usize = self.get_fill_length(length);
         let fill_string: String = " ".repeat(fill_length);
-        self.terminal.write_color(&fill_string, &WhiteANSI);
+        self.terminal.write_ansi(&fill_string, &WhiteANSI);
     }
 
     fn get_fill_length(&self, length: usize) -> usize {

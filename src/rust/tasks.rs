@@ -61,7 +61,7 @@ impl RustVSCodeTask {
 
         if !path_dir.exists() {
             self.terminal
-                .writeln_color("[Creating Directory Structure]", &CyanANSI);
+                .writeln_ansi("[Creating Directory Structure]", &CyanANSI);
             let result: Result<(), io::Error> = fs::create_dir_all(&path_dir);
 
             if let Err(error) = result {
@@ -78,7 +78,7 @@ impl RustVSCodeTask {
                 self.terminal.writeln_parameter(&parts, &RedANSI);
             } else {
                 let string: &str = "New tasks file has been created.";
-                self.terminal.writeln_color(string, &GreenANSI);
+                self.terminal.writeln_ansi(string, &GreenANSI);
 
                 let path_string = format!("{:?}", &self.path);
                 let parts: [&str; 2] = ["File: ", &path_string];
@@ -95,11 +95,11 @@ impl RustVSCodeTask {
                         self.terminal.writeln_parameter(&parts, &RedANSI);
                     } else {
                         let string: &str = "Run task has been added to [tasks.json]";
-                        self.terminal.writeln_color(string, &GreenANSI);
+                        self.terminal.writeln_ansi(string, &GreenANSI);
                     }
                 } else {
                     let string: &str = "Run task already exists in [tasks.json].";
-                    self.terminal.writeln_color(string, &RedANSI);
+                    self.terminal.writeln_ansi(string, &RedANSI);
                 }
             } else {
                 let error: io::Error = is_present.unwrap_err();

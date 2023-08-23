@@ -18,7 +18,7 @@ impl RustVSCodeTaskCommand {
     pub fn execute_command(&self) {
         if self.option.run_task {
             let string: &str = "[Generating Run Task]";
-            self.terminal.writeln_color(string, &CyanANSI);
+            self.terminal.writeln_ansi(string, &CyanANSI);
 
             let vscode_task: RustVSCodeTask = RustVSCodeTask::new();
             vscode_task.generate_run_task();

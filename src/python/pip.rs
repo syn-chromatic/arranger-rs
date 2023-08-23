@@ -31,8 +31,8 @@ impl Pip {
         let error: io::Error = pip_version.unwrap_err();
         let terminal: Terminal = Terminal::new();
         let string: &str = "Found Python, but was unable to retrieve Pip version.\n";
-        terminal.writeln_color(&string, &RedANSI);
-        terminal.writeln_color(&error.to_string(), &RedANSI);
+        terminal.writeln_ansi(&string, &RedANSI);
+        terminal.writeln_ansi(&error.to_string(), &RedANSI);
         None
     }
 

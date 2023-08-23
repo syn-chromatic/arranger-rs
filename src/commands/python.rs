@@ -148,7 +148,7 @@ impl PythonExecuteCommand {
 
             if let Some(environment) = environment {
                 let string: String = format!("[Environment -> {:?}]", env_directory);
-                self.terminal.writeln_color(&string, &YellowANSI);
+                self.terminal.writeln_ansi(&string, &YellowANSI);
 
                 let virtual_env: VirtualEnv = VirtualEnv::new(&environment);
                 virtual_env.execute_custom_command(&args);
@@ -208,7 +208,7 @@ impl PythonPackagesCommand {
 
             if let Ok(packages) = packages {
                 let string: String = format!("[Environment -> {:?}]", env_dir);
-                self.terminal.writeln_color(&string, &YellowANSI);
+                self.terminal.writeln_ansi(&string, &YellowANSI);
 
                 self.list_packages(&packages);
 
@@ -353,7 +353,7 @@ impl PythonDLCommand {
             }
         }
         let string: &str = "Python version not found.";
-        terminal.writeln_color(&string, &RedANSI);
+        terminal.writeln_ansi(&string, &RedANSI);
     }
 
     async fn get_url(

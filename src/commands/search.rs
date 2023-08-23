@@ -82,7 +82,7 @@ impl SearchCommand {
                     file_search.set_exclusive_file_stem_regex(&regex);
                 } else {
                     let error: String = regex.unwrap_err().to_string();
-                    self.terminal.writeln_color(&error, &RedANSI);
+                    self.terminal.writeln_ansi(&error, &RedANSI);
                     return;
                 }
             } else {
@@ -168,7 +168,7 @@ impl SearchCommand {
             let files_iterator: Box<dyn Iterator<Item = &FileInfo>> =
                 self.get_files_iterator(files);
 
-            self.terminal.writeln_color("\nFiles:", &GreenANSI);
+            self.terminal.writeln_ansi("\nFiles:", &GreenANSI);
             for file_info in files_iterator {
                 self.print_file_info_path(&file_info);
                 self.print_file_info_metadata(&file_info);
@@ -176,7 +176,7 @@ impl SearchCommand {
             }
         } else {
             self.terminal
-                .writeln_color("\nNo files were found.", &RedANSI);
+                .writeln_ansi("\nNo files were found.", &RedANSI);
         }
     }
 

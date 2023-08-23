@@ -181,19 +181,19 @@ impl VirtualEnv {
 
     fn print_installing_package(&self) {
         let string: &str = "[Installing Virtual Environment Package]\n";
-        self.terminal.writeln_color(string, &CyanANSI);
+        self.terminal.writeln_ansi(string, &CyanANSI);
     }
 
     fn print_creating_environment(&self) {
         let version: &SemanticVersion = self.environment.get_python_version();
         let version_string: String = version.get_2p_string();
         let string: String = format!("[Creating Python {} Environment]\n", version_string);
-        self.terminal.writeln_color(&string, &CyanANSI);
+        self.terminal.writeln_ansi(&string, &CyanANSI);
     }
 
     fn print_executing_custom_command(&self) {
         let string: &str = "[Executing command]\n";
-        self.terminal.writeln_color(string, &CyanANSI);
+        self.terminal.writeln_ansi(string, &CyanANSI);
     }
 }
 
@@ -256,11 +256,11 @@ impl VirtualEnvSearch {
         if files.len() == 0 {
             let string: &str =
                 "\nNo environments were found.\nTry creating one with: arranger python venv\n";
-            terminal.writeln_color(string, &RedANSI);
+            terminal.writeln_ansi(string, &RedANSI);
             return false;
         }
 
-        terminal.writeln_color("\nFound Environments:", &GreenANSI);
+        terminal.writeln_ansi("\nFound Environments:", &GreenANSI);
 
         for file in files {
             let mut environment_directory: WPath = file.get_path().into();

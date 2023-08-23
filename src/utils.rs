@@ -2,9 +2,11 @@ use std::fmt;
 use std::io;
 use std::str::Lines;
 
+use crate::general::terminal::ANSICode;
 use crate::general::terminal::Terminal;
+use crate::general::terminal::{BlackANSI, WhiteANSI, YellowANSI};
+use crate::general::terminal::{CombinedANSI, YellowBackgroundANSI};
 use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
-use crate::general::terminal::{WhiteANSI, YellowANSI};
 
 pub struct ConfirmationPrompt;
 
@@ -13,7 +15,7 @@ impl ConfirmationPrompt {
         let mut input: String = String::new();
 
         let string: &str = "\nDo you want to continue? [y/N]: ";
-        terminal.write_color(string, &CyanANSI);
+        terminal.write_ansi(string, &CyanANSI);
 
         match io::stdin().read_line(&mut input) {
             Ok(_) => Self::process_input(terminal, &input),
@@ -26,18 +28,18 @@ impl ConfirmationPrompt {
     fn process_input(terminal: &Terminal, input: &str) -> bool {
         if input.trim() == "y" || input.trim() == "Y" {
             let string: &str = "Continuing...\n\n";
-            terminal.writeln_color(string, &GreenANSI);
+            terminal.writeln_ansi(string, &GreenANSI);
             return true;
         } else {
             let string: &str = "Not continuing...\n";
-            terminal.writeln_color(string, &RedANSI);
+            terminal.writeln_ansi(string, &RedANSI);
             return false;
         }
     }
 
     fn handle_error(terminal: &Terminal, error: io::Error) -> bool {
         let string: String = format!("Failed to read line: {}\n", error);
-        terminal.writeln_color(&string, &RedANSI);
+        terminal.writeln_ansi(&string, &RedANSI);
         false
     }
 }
@@ -84,7 +86,7 @@ impl OptionsPrinter {
             if self.is_non_empty_alphabetic_line(&line) {
                 self.handle_alphabetic_line(&line, idx);
             } else {
-                self.terminal.writeln_color(&line, &WhiteANSI);
+                self.terminal.writeln_ansi(&line, &WhiteANSI);
             }
         }
     }
@@ -111,7 +113,7 @@ impl OptionsPrinter {
                 self.terminal.writeln_parameter(&parts, &RedANSI);
             }
         } else if idx == 0 {
-            self.terminal.writeln_color(&line, &GreenANSI);
+            self.terminal.writeln_ansi(&line, &GreenANSI);
         }
     }
 }
@@ -150,13 +152,12 @@ impl ParametersPrinter {
         let attribute_length: usize = self.get_max_attribute_length() + self.delimiter_spacing;
 
         let padded_header: String = self.get_padded_header(attribute_length);
-        let highlighted_header: String = self.get_highlighted_header(&padded_header);
-
-        self.terminal.writeln(&highlighted_header);
+        let header_ansi: CombinedANSI = self.get_header_ansi();
+        self.terminal.writeln_ansi(&padded_header, &header_ansi);
 
         for parameter in &self.parameters {
             let padded_attribute: String = self.pad_right_to_length(&parameter.0, attribute_length);
-            self.terminal.write_color(&padded_attribute, &YellowANSI);
+            self.terminal.write_ansi(&padded_attribute, &YellowANSI);
             let delimiter: String = self.get_delimiter();
             let padded_value: String = delimiter + &parameter.1;
             self.terminal.write(&padded_value);
@@ -195,11 +196,9 @@ impl ParametersPrinter {
         padded_header
     }
 
-    fn get_highlighted_header(&self, header: &str) -> String {
-        let ansi_st: &str = "\x1B[43m\x1B[30m";
-        let ansi_en: &str = "\x1B[0m";
-        let highlighted_header: String = ansi_st.to_string() + header + ansi_en;
-        highlighted_header
+    fn get_header_ansi(&self) -> CombinedANSI {
+        let ansi: CombinedANSI = YellowBackgroundANSI.combine(&BlackANSI);
+        ansi
     }
 
     fn get_delimiter(&self) -> String {
