@@ -298,6 +298,7 @@ impl Terminal {
         io::stdout().flush().unwrap();
     }
 
+    #[allow(dead_code)]
     pub fn writeln(&self, text: &str) {
         let ansi_code_v: String = self.ansi_code.value();
         let ansi_reset_v: String = self.ansi_reset.value();
