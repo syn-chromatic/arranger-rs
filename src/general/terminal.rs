@@ -168,10 +168,12 @@ impl Terminal {
         length
     }
 
+    #[allow(dead_code)]
     pub fn set_ansi_color<T: ANSICode + 'static>(&mut self, ansi_color: T) {
         self.ansi_color = Box::new(ansi_color);
     }
 
+    #[allow(dead_code)]
     pub fn write_reset(&self) {
         let ansi_reset_v: &str = self.ansi_reset.value();
         print!("{}", ansi_reset_v);

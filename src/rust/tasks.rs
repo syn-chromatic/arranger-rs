@@ -71,8 +71,6 @@ impl RustVSCodeTask {
             }
         }
 
-        let mut path_string: String = format!("{:?}", &self.path);
-
         if !self.path.exists() {
             let result: Result<(), io::Error> = fs::write(&self.path, json);
             if let Err(error) = result {
@@ -82,7 +80,7 @@ impl RustVSCodeTask {
                 let string: &str = "New tasks file has been created.";
                 self.terminal.writeln_color(string, &GreenANSI);
 
-                path_string = format!("{:?}", &self.path);
+                let path_string = format!("{:?}", &self.path);
                 let parts: [&str; 2] = ["File: ", &path_string];
                 self.terminal.writeln_parameter(&parts, &GreenANSI);
             }

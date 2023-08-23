@@ -8,12 +8,13 @@ use std::time::UNIX_EPOCH;
 use regex::Regex;
 
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI, YellowANSI};
+use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
 
 use crate::commands::configuration::SearchSort;
 use crate::general::path::WPath;
 use crate::search::file::FileSearch;
 use crate::search::info::FileInfo;
+use crate::utils::ParametersPrinter;
 use crate::SearchOption;
 
 pub struct SearchCommand {
@@ -183,17 +184,26 @@ impl SearchCommand {
         let filename: &str = self.get_filename_or_default();
         let extensions: &Vec<String> = &self.option.extensions;
         let excluded_dirs: &Vec<String> = &self.option.excluded_dirs;
+        let sort: &Option<SearchSort> = &self.option.sort;
+        let limit: &Option<usize> = &self.option.limit;
         let regex: bool = self.option.regex;
 
-        let parameters: String = format!(
-            "Filename: [{}] | Extensions: {:?} | Excluded Dirs: {:?} | Regex: [{}]\n",
-            filename, extensions, excluded_dirs, regex
-        );
+        let mut parameters_printer: ParametersPrinter = ParametersPrinter::new(2);
+        parameters_printer.set_header("Search Parameters");
+        parameters_printer.add_parameter(("Filename", filename));
+        parameters_printer.add_parameter(("Extensions", extensions));
+        parameters_printer.add_parameter(("Excluded Dirs", excluded_dirs));
 
-        self.terminal
-            .write_color("Search Parameters: ", &YellowANSI);
-        self.terminal.write(&parameters);
-        println!();
+        if let Some(sort) = sort {
+            parameters_printer.add_parameter(("Sorting", sort));
+        }
+
+        if let Some(limit) = limit {
+            parameters_printer.add_parameter(("Limit", limit));
+        }
+
+        parameters_printer.add_parameter(("Regex", regex));
+        parameters_printer.print_parameters();
     }
 
     fn print_file_info_path(&self, file_info: &FileInfo) {

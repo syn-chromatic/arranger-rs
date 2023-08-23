@@ -68,6 +68,7 @@ impl FileStructure {
         return false;
     }
 
+    #[allow(dead_code)]
     pub async fn access_file(&mut self, file: &str) -> Option<String> {
         let link_type: Option<LinkType> = LinkType::new(file);
         if let Some(link_type) = &link_type {
@@ -88,6 +89,7 @@ impl FileStructure {
         self.structure.clone()
     }
 
+    #[allow(dead_code)]
     pub fn list_structure(&self) {
         for file_type in &self.structure {
             match file_type {

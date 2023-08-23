@@ -7,6 +7,7 @@ use crate::python::pip::Pip;
 #[derive(Clone)]
 pub struct PythonEnvironment {
     python_version: SemanticVersion,
+    #[allow(dead_code)]
     python_path: WPath,
     python_executable: WPath,
     pip: Pip,

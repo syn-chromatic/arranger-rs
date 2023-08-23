@@ -19,10 +19,11 @@ use crate::commands::configuration::VirtualEnvOption;
 use crate::general::https::HTTPS;
 use crate::general::path::WPath;
 use crate::general::version::SemanticVersion;
+use crate::utils::ParametersPrinter;
 
+use crate::python::ftp::PythonFTPRetriever;
 use crate::python::pip::{PipMetadata, PipPackage, PipPackageParser};
 use crate::python::python::PythonEnvironment;
-use crate::python::ftp::PythonFTPRetriever;
 use crate::python::virtualenv::VirtualEnv;
 use crate::python::virtualenv::VirtualEnvCFG;
 use crate::python::virtualenv::VirtualEnvSearch;
@@ -112,10 +113,10 @@ impl PythonFixEnvCommand {
 
     fn print_search_parameters(&self) {
         let deep_search: bool = self.option.deep_search;
-        let parameters: String = format!("Deep Search: [{}]", deep_search);
-        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        self.terminal.writeln_parameter(&parts, &YellowANSI);
-        println!();
+        let mut parameters_printer = ParametersPrinter::new(2);
+        parameters_printer.set_header("Fix Venv Parameters");
+        parameters_printer.add_parameter(("Deep Search", deep_search));
+        parameters_printer.print_parameters();
     }
 }
 
@@ -133,10 +134,6 @@ impl PythonExecuteCommand {
     pub fn execute_command(&self) {
         let deep_search: bool = self.option.deep_search;
         self.print_search_parameters();
-
-        let command_string: String = format!("[{}]\n", self.option.command);
-        let parts: [&str; 2] = ["Command: ", &command_string];
-        self.terminal.writeln_parameter(&parts, &YellowANSI);
 
         let args: Vec<&str> = self.get_command_args();
         let venv_search: VirtualEnvSearch = VirtualEnvSearch::new(deep_search);
@@ -173,10 +170,13 @@ impl PythonExecuteCommand {
     }
     fn print_search_parameters(&self) {
         let deep_search: bool = self.option.deep_search;
-        let parameters: String = format!("Deep Search: [{}]", deep_search);
-        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        self.terminal.writeln_parameter(&parts, &YellowANSI);
-        println!();
+        let command: &String = &self.option.command;
+
+        let mut parameters_printer = ParametersPrinter::new(2);
+        parameters_printer.set_header("Execute Parameters");
+        parameters_printer.add_parameter(("Deep Search", deep_search));
+        parameters_printer.add_parameter(("Command", command));
+        parameters_printer.print_parameters();
     }
 }
 
@@ -228,15 +228,15 @@ impl PythonPackagesCommand {
     fn print_search_parameters(&self) {
         let deep_search: bool = self.option.deep_search;
         let save: bool = self.option.save;
-        let distilled: bool = self.option.distill;
+        let distill: bool = self.option.distill;
 
-        let parameters: String = format!(
-            "Deep Search: [{}] | Distill: [{}] | Save: [{}]",
-            deep_search, distilled, save
-        );
-        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        self.terminal.writeln_parameter(&parts, &YellowANSI);
-        println!();
+        let mut parameters_printer: ParametersPrinter = ParametersPrinter::new(2);
+        parameters_printer.set_header("Packages Parameters");
+        parameters_printer.add_parameter(("Deep Search", deep_search));
+        parameters_printer.add_parameter(("Distill", distill));
+        parameters_printer.add_parameter(("Save", save));
+
+        parameters_printer.print_parameters();
     }
 
     fn get_filename_from_option(&self) -> &str {
@@ -379,16 +379,16 @@ impl PythonDLCommand {
     }
 
     fn print_search_parameters(&self) {
-        let terminal: Terminal = Terminal::new();
         let arch: &str = &self.option.architecture;
         let platform: &str = &self.option.platform;
         let package_type: &str = &self.option.package_type;
 
-        let parameters: String = format!(
-            "Arch: [{}] | Platform: [{}] | Type: [{}]\n",
-            arch, platform, package_type
-        );
-        let parts: [&str; 2] = ["Search Parameters: ", &parameters];
-        terminal.writeln_parameter(&parts, &YellowANSI);
+        let mut parameters_printer: ParametersPrinter = ParametersPrinter::new(2);
+        parameters_printer.set_header("Download Parameters");
+        parameters_printer.add_parameter(("Arch", arch));
+        parameters_printer.add_parameter(("Platform", platform));
+        parameters_printer.add_parameter(("Type", package_type));
+
+        parameters_printer.print_parameters();
     }
 }

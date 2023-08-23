@@ -41,10 +41,12 @@ impl WPath {
         self.path.exists()
     }
 
+    #[allow(dead_code)]
     pub fn is_file(&self) -> bool {
         self.path.is_file()
     }
 
+    #[allow(dead_code)]
     pub fn is_dir(&self) -> bool {
         self.path.is_dir()
     }
@@ -54,6 +56,7 @@ impl WPath {
         read_dir
     }
 
+    #[allow(dead_code)]
     pub fn to_canonical(&mut self) -> Option<io::Error> {
         let canonical_path: Result<PathBuf, io::Error> = self.path.canonicalize();
         if let Ok(canonical_path) = canonical_path {
@@ -99,6 +102,8 @@ impl WPath {
         }
         self.clone()
     }
+
+    #[allow(dead_code)]
     pub fn get_path_buf(&self) -> &PathBuf {
         &self.path
     }

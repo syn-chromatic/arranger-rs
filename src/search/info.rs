@@ -22,6 +22,7 @@ impl FileInfo {
         &self.path
     }
 
+    #[allow(dead_code)]
     pub fn get_metadata(&self) -> &Metadata {
         &self.metadata
     }

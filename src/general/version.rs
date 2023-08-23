@@ -85,6 +85,7 @@ impl SemanticVersion {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_3p(major: usize, minor: usize, patch: usize) -> Self {
         SemanticVersion {
             major,
@@ -162,6 +163,7 @@ impl SemanticVersion {
         (self.major, self.minor, self.patch)
     }
 
+    #[allow(dead_code)]
     pub fn get_4p_version(&self) -> (usize, usize, usize, &str) {
         (self.major, self.minor, self.patch, &self.qualifier)
     }
@@ -192,15 +194,18 @@ impl SemanticVersion {
         version
     }
 
+    #[allow(dead_code)]
     pub fn get_3p_string(&self) -> String {
         let version: String = format!("{}.{}.{}", self.major, self.minor, self.patch);
         version
     }
 
+    #[allow(dead_code)]
     pub fn set_major(&mut self, major: usize) {
         self.major = major;
     }
 
+    #[allow(dead_code)]
     pub fn set_minor(&mut self, minor: usize) {
         self.minor = minor;
     }
@@ -213,6 +218,7 @@ impl SemanticVersion {
         self.major
     }
 
+    #[allow(dead_code)]
     pub fn get_minor(&self) -> usize {
         self.minor
     }

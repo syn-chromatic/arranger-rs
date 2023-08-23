@@ -36,6 +36,7 @@ impl Pip {
         None
     }
 
+    #[allow(dead_code)]
     pub fn get_pip_version(&self) -> &SemanticVersion {
         &self.pip_version
     }
@@ -228,6 +229,7 @@ impl PipMetadata {
         PipMetadata { package, requires }
     }
 
+    #[allow(dead_code)]
     pub fn get_package(&self) -> &PipPackage {
         &self.package
     }
@@ -342,14 +344,17 @@ impl PipPackage {
         &self.name
     }
 
+    #[allow(dead_code)]
     pub fn get_name_string(&self) -> &str {
         self.name.get_string()
     }
 
+    #[allow(dead_code)]
     pub fn get_version(&self) -> &SemanticVersion {
         &self.version
     }
 
+    #[allow(dead_code)]
     pub fn get_path(&self) -> &WPath {
         &self.path
     }
