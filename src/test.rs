@@ -57,6 +57,8 @@ impl FileInfoPrinter {
             self.print_mid_line(width);
             println!();
             self.print_metadata(width, file_info);
+            println!();
+            self.print_bottom_line(width);
         }
     }
 
@@ -81,7 +83,6 @@ impl FileInfoPrinter {
         let horizontal: char = GridCharacter::Horizontal.as_char();
         let top_t: char = GridCharacter::TopT.as_char();
         for idx in 1..width - 1 {
-            // println!("Test: {}", width - idx);
             if idx % split_count == 0 {
                 print!("{}", top_t);
                 continue;
@@ -93,10 +94,28 @@ impl FileInfoPrinter {
         print!("{}", mid_right);
     }
 
+    pub fn print_bottom_line(&self, width: usize) {
+        let bottom_left: char = GridCharacter::BottomLeft.as_char();
+        print!("{}", bottom_left);
+
+        let split_count: usize = width / 3;
+        let horizontal: char = GridCharacter::Horizontal.as_char();
+        let bottom_t: char = GridCharacter::BottomT.as_char();
+        for idx in 1..width - 1 {
+            if idx % split_count == 0 {
+                print!("{}", bottom_t);
+                continue;
+            }
+            print!("{}", horizontal);
+        }
+
+        let bottom_right: char = GridCharacter::BottomRight.as_char();
+        print!("{}", bottom_right);
+    }
+
     pub fn print_path(&self, width: usize, file_info: &FileInfo) {
         let path: WPath = file_info.get_path().into();
-        // let path_str: String = format!("Path: [{:?}]", path);
-        let path_str: String = format!("Path: [{}]", "o".repeat(500));
+        let path_str: String = format!("Path: [{:?}]", path);
 
         let length: usize = width - (self.padding * 2) - 2;
         let split_path = self.split_by_length(&path_str, length);
@@ -124,10 +143,10 @@ impl FileInfoPrinter {
         let created_str: String = format!("Created: {}", created);
         let modified_str: String = format!("Modified: {}", modified);
 
-        let size_length = (width / 3) - (self.padding * 2) - 2;
-
-        let mut length = width - 2;
-        let mut split_length = length / 3;
+        let mut length: usize = width - 2;
+        let mut split_length: usize = length / 3;
+        let mut splits: Vec<Vec<String>> = Vec::new();
+        let mut split_lengths: Vec<usize> = Vec::new();
 
         for i in 0..3 {
             length -= split_length;
@@ -137,74 +156,63 @@ impl FileInfoPrinter {
             }
 
             if i == 0 {
-                let split_size = self.split_by_length(&size_str, split_length);
-                for (idx, size_part) in split_size.iter().enumerate() {
-                    let vertical = GridCharacter::Vertical.as_char();
-                    print!("{}", vertical);
-                    print!("{}", " ".repeat(self.padding));
-                    print!("{}", size_part);
-                    print!(
-                        "{}",
-                        " ".repeat(split_length - size_part.len() - self.padding)
-                    );
-                    print!("{} ", vertical);
-
-                    if idx != split_size.len() - 1 {
-                        println!();
-                    }
-                }
+                let split_size: Vec<String> =
+                    self.split_by_length(&size_str, split_length - (self.padding * 2));
+                splits.push(split_size);
+                split_lengths.push(split_length);
             } else if i == 1 {
-                let split_created = self.split_by_length(&size_str, split_length);
-                for (idx, created_part) in split_created.iter().enumerate() {
-                    let vertical = GridCharacter::Vertical.as_char();
-
-                    print!("{}", " ".repeat(self.padding));
-                    print!("{}", created_part);
-                    print!(
-                        "{}",
-                        " ".repeat(split_length - created_part.len() - self.padding - 1)
-                    );
-                    print!("{} ", vertical);
-
-                    // if idx != created_part.len() - 1 {
-                    //     println!();
-                    // }
-                }
+                let split_created: Vec<String> =
+                    self.split_by_length(&created_str, split_length - (self.padding * 2));
+                splits.push(split_created);
+                split_lengths.push(split_length);
             } else if i == 2 {
-                let split_modified = self.split_by_length(&size_str, split_length);
-                for (idx, modified_part) in split_modified.iter().enumerate() {
-                    let vertical = GridCharacter::Vertical.as_char();
-
-                    print!("{}", " ".repeat(self.padding));
-                    print!("{}", modified_part);
-                    print!(
-                        "{}",
-                        " ".repeat(split_length - modified_part.len() - self.padding - 1)
-                    );
-                    print!("{} ", vertical);
-
-                    // if idx != modified_part.len() - 1 {
-                    //     println!();
-                    // }
-                }
+                let split_modified: Vec<String> =
+                    self.split_by_length(&modified_str, split_length - (self.padding * 2));
+                splits.push(split_modified);
+                split_lengths.push(split_length);
             }
         }
 
-        // let split_size = self.split_by_length(&size_str, size_length);
-        // for (idx, size_part) in split_size.iter().enumerate() {
-        //     let vertical = GridCharacter::Vertical.as_char();
-        //     print!("{}", vertical);
-        //     print!("{}", " ".repeat(self.padding));
-        //     print!("{}", size_part);
-        //     print!("{}", " ".repeat(width - size_part.len() - self.padding - 2));
-        //     print!("{} ", vertical);
+        let mut line: usize = 0;
+        loop {
+            for (idx, split) in splits.iter().enumerate() {
+                if split.len() > line {
+                    let segment: &String = &split[line];
+                    let vertical: char = GridCharacter::Vertical.as_char();
 
-        //     if idx != split_size.len() - 1 {
-        //         println!();
-        //     }
-        // }
+                    if idx == 0 {
+                        print!("{}", vertical);
+                    }
+                    print!("{}", " ".repeat(self.padding));
+                    print!("{}", segment);
+                    let remaining: usize = split_lengths[idx] - segment.len() - self.padding;
+                    print!("{}", " ".repeat(remaining));
+                    print!("{}", vertical);
+                } else {
+                    let segment: String = " ".repeat(split_lengths[idx]);
+                    let vertical: char = GridCharacter::Vertical.as_char();
 
-        // println!("Size Length: {} | width: {}", (width - 2) / 3, width);
+                    if idx == 0 {
+                        print!("{}", vertical);
+                    }
+                    print!("{}", segment);
+                    print!("{}", vertical);
+                }
+            }
+
+            let mut next_line: bool = false;
+            for split in splits.iter() {
+                if split.len() > line + 1 {
+                    next_line = true;
+                }
+            }
+            if !next_line {
+                break;
+            }
+
+            println!();
+            line += 1;
+        }
     }
 
     pub fn split_by_length(&self, string: &str, length: usize) -> Vec<String> {
@@ -231,7 +239,7 @@ impl FileInfoPrinter {
 
 #[test]
 fn test_function() {
-    let path = std::path::Path::new("").to_path_buf();
+    let path = std::path::Path::new(r"").to_path_buf();
     let metadata = path.metadata();
     if let Ok(metadata) = metadata {
         let file_info = &FileInfo::new(path, metadata);
