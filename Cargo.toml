@@ -10,6 +10,7 @@ edition = "2021"
 dirs = "5.0"
 regex = "1.9.3"
 chrono = "0.4.26"
+term_size = "0.3.2"
 
 clap = { version = "4.3.16", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
