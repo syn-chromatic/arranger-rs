@@ -7,7 +7,7 @@ use crate::general::terminal::ANSICode;
 use crate::general::terminal::Terminal;
 use crate::general::terminal::{BlackANSI, CombinedANSI, ResetANSI, YellowBackgroundANSI};
 
-enum GridCharacter {
+enum TableCharacter {
     TopRight,
     TopLeft,
     BottomRight,
@@ -21,39 +21,39 @@ enum GridCharacter {
     MidRightT,
 }
 
-impl GridCharacter {
+impl TableCharacter {
     pub fn as_char(&self) -> char {
         match self {
-            GridCharacter::TopRight => '┐',
-            GridCharacter::TopLeft => '┌',
-            GridCharacter::BottomRight => '┘',
-            GridCharacter::BottomLeft => '└',
-            GridCharacter::Horizontal => '─',
-            GridCharacter::Vertical => '│',
-            GridCharacter::TopT => '┬',
-            GridCharacter::BottomT => '┴',
-            GridCharacter::MidT => '┼',
-            GridCharacter::MidLeftT => '├',
-            GridCharacter::MidRightT => '┤',
+            TableCharacter::TopRight => '┐',
+            TableCharacter::TopLeft => '┌',
+            TableCharacter::BottomRight => '┘',
+            TableCharacter::BottomLeft => '└',
+            TableCharacter::Horizontal => '─',
+            TableCharacter::Vertical => '│',
+            TableCharacter::TopT => '┬',
+            TableCharacter::BottomT => '┴',
+            TableCharacter::MidT => '┼',
+            TableCharacter::MidLeftT => '├',
+            TableCharacter::MidRightT => '┤',
         }
     }
 }
 
-pub struct FileInfoPrinter {
+pub struct FileInfoTable {
     terminal: Terminal,
     padding: usize,
     width_scale: f32,
 }
 
-impl FileInfoPrinter {
-    pub fn new(padding: usize, width_scale: f32) -> FileInfoPrinter {
+impl FileInfoTable {
+    pub fn new(padding: usize, width_scale: f32) -> FileInfoTable {
         let width_scale: f32 = Self::round_to_one_decimal(width_scale);
         if width_scale < 0.1 || width_scale > 0.9 {
             panic!("width_scale is not within 0.1 to 0.9 range");
         }
 
         let terminal: Terminal = Terminal::new();
-        FileInfoPrinter {
+        FileInfoTable {
             terminal,
             padding,
             width_scale,
@@ -88,7 +88,7 @@ impl FileInfoPrinter {
     }
 }
 
-impl FileInfoPrinter {
+impl FileInfoTable {
     fn round_to_one_decimal(num: f32) -> f32 {
         (num * 10.0).floor() / 10.0
     }
@@ -140,25 +140,25 @@ impl FileInfoPrinter {
     }
 
     fn print_top_line(&self, width: usize) {
-        let top_left: char = GridCharacter::TopLeft.as_char();
+        let top_left: char = TableCharacter::TopLeft.as_char();
         print!("{}", top_left);
 
-        let horizontal: char = GridCharacter::Horizontal.as_char();
+        let horizontal: char = TableCharacter::Horizontal.as_char();
         for _ in 1..width - 1 {
             print!("{}", horizontal);
         }
 
-        let top_right = GridCharacter::TopRight.as_char();
+        let top_right = TableCharacter::TopRight.as_char();
         print!("{}", top_right);
     }
 
     fn print_mid_line(&self, width: usize) {
-        let mid_left: char = GridCharacter::MidLeftT.as_char();
+        let mid_left: char = TableCharacter::MidLeftT.as_char();
         print!("{}", mid_left);
 
         let split_count: usize = width / 3;
-        let horizontal: char = GridCharacter::Horizontal.as_char();
-        let top_t: char = GridCharacter::TopT.as_char();
+        let horizontal: char = TableCharacter::Horizontal.as_char();
+        let top_t: char = TableCharacter::TopT.as_char();
         for idx in 1..width - 1 {
             if idx % split_count == 0 && idx != width - 2 {
                 print!("{}", top_t);
@@ -167,17 +167,17 @@ impl FileInfoPrinter {
             print!("{}", horizontal);
         }
 
-        let mid_right: char = GridCharacter::MidRightT.as_char();
+        let mid_right: char = TableCharacter::MidRightT.as_char();
         print!("{}", mid_right);
     }
 
     fn print_bottom_line(&self, width: usize) {
-        let bottom_left: char = GridCharacter::BottomLeft.as_char();
+        let bottom_left: char = TableCharacter::BottomLeft.as_char();
         print!("{}", bottom_left);
 
         let split_count: usize = width / 3;
-        let horizontal: char = GridCharacter::Horizontal.as_char();
-        let bottom_t: char = GridCharacter::BottomT.as_char();
+        let horizontal: char = TableCharacter::Horizontal.as_char();
+        let bottom_t: char = TableCharacter::BottomT.as_char();
         for idx in 1..width - 1 {
             if idx % split_count == 0 && idx != width - 2 {
                 print!("{}", bottom_t);
@@ -186,7 +186,7 @@ impl FileInfoPrinter {
             print!("{}", horizontal);
         }
 
-        let bottom_right: char = GridCharacter::BottomRight.as_char();
+        let bottom_right: char = TableCharacter::BottomRight.as_char();
         print!("{}", bottom_right);
     }
 
@@ -197,7 +197,7 @@ impl FileInfoPrinter {
         let length: usize = width - (self.padding * 2) - 2;
         let split_path = self.split_by_length(&path_str, length);
         for (idx, path_part) in split_path.iter().enumerate() {
-            let vertical = GridCharacter::Vertical.as_char();
+            let vertical = TableCharacter::Vertical.as_char();
 
             print!("{}", vertical);
             print!("{}", " ".repeat(self.padding));
@@ -246,7 +246,7 @@ impl FileInfoPrinter {
             for (idx, split) in splits.iter().enumerate() {
                 if split.len() > line {
                     let segment: &String = &split[line];
-                    let vertical: char = GridCharacter::Vertical.as_char();
+                    let vertical: char = TableCharacter::Vertical.as_char();
 
                     if idx == 0 {
                         print!("{}", vertical);
@@ -258,7 +258,7 @@ impl FileInfoPrinter {
                     print!("{}", vertical);
                 } else {
                     let segment: String = " ".repeat(split_lengths[idx]);
-                    let vertical: char = GridCharacter::Vertical.as_char();
+                    let vertical: char = TableCharacter::Vertical.as_char();
 
                     if idx == 0 {
                         print!("{}", vertical);
@@ -435,7 +435,7 @@ impl DynamicTable {
     }
 
     fn format_line(&self, attribute: &str, value: &str) -> String {
-        let vert: char = GridCharacter::Vertical.as_char();
+        let vert: char = TableCharacter::Vertical.as_char();
         let line: String = format!("{} {} {} {} {}", vert, attribute, vert, value, vert);
         line
     }

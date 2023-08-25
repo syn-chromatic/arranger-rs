@@ -11,9 +11,9 @@ use crate::general::terminal::Terminal;
 use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
 
 use crate::commands::configuration::SearchSort;
-use crate::general::grid_printer::DynamicTable;
-use crate::general::grid_printer::FileInfoPrinter;
 use crate::general::path::WPath;
+use crate::general::table_display::DynamicTable;
+use crate::general::table_display::FileInfoTable;
 use crate::search::file::FileSearch;
 use crate::search::info::FileInfo;
 use crate::SearchOption;
@@ -168,7 +168,7 @@ impl SearchCommand {
         if !files.is_empty() {
             let files_iterator: Box<dyn Iterator<Item = &FileInfo>> =
                 self.get_files_iterator(files);
-            let file_info_printer: FileInfoPrinter = FileInfoPrinter::new(2, 0.9);
+            let file_info_printer: FileInfoTable = FileInfoTable::new(2, 0.9);
             println!();
             file_info_printer.print_header("FILES");
             // self.terminal.writeln_ansi("\nFiles:", &GreenANSI);

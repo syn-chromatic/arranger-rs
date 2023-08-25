@@ -16,9 +16,9 @@ use crate::commands::configuration::PythonDownloadOption;
 use crate::commands::configuration::VirtualEnvExecuteOption;
 use crate::commands::configuration::VirtualEnvOption;
 
-use crate::general::grid_printer::DynamicTable;
 use crate::general::https::HTTPS;
 use crate::general::path::WPath;
+use crate::general::table_display::DynamicTable;
 use crate::general::version::SemanticVersion;
 
 use crate::python::ftp::PythonFTPRetriever;
