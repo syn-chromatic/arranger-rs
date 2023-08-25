@@ -38,18 +38,27 @@ impl GridCharacter {
 pub struct FileInfoPrinter {
     terminal: Terminal,
     padding: usize,
+    width_scale: f32,
 }
 
 impl FileInfoPrinter {
-    pub fn new(padding: usize) -> FileInfoPrinter {
+    pub fn new(padding: usize, width_scale: f32) -> FileInfoPrinter {
+        if width_scale < 0.0 || width_scale > 1.0 {
+            panic!("width_scale is not within 0.0 to 1.0 range");
+        }
+
         let terminal: Terminal = Terminal::new();
-        FileInfoPrinter { terminal, padding }
+        FileInfoPrinter {
+            terminal,
+            padding,
+            width_scale,
+        }
     }
 
     pub fn print(&self, file_info: &FileInfo) {
-        let size = term_size::dimensions();
+        let size: Option<(usize, usize)> = term_size::dimensions();
         if let Some((width, _)) = size {
-            let width: usize = (width as f32 * 0.4) as usize;
+            let width: usize = (width as f32 * self.width_scale) as usize;
             self.print_top_line(width);
             println!();
             self.print_path(width, file_info);
@@ -234,16 +243,5 @@ impl FileInfoPrinter {
             split.push(mutable_string);
         }
         split
-    }
-}
-
-#[test]
-fn test_function() {
-    let path = std::path::Path::new(r"").to_path_buf();
-    let metadata = path.metadata();
-    if let Ok(metadata) = metadata {
-        let file_info = &FileInfo::new(path, metadata);
-        let file_info_printer = FileInfoPrinter::new(2);
-        file_info_printer.print(file_info);
     }
 }

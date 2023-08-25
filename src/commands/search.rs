@@ -11,6 +11,7 @@ use crate::general::terminal::Terminal;
 use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
 
 use crate::commands::configuration::SearchSort;
+use crate::general::grid_printer::FileInfoPrinter;
 use crate::general::path::WPath;
 use crate::search::file::FileSearch;
 use crate::search::info::FileInfo;
@@ -167,11 +168,13 @@ impl SearchCommand {
         if !files.is_empty() {
             let files_iterator: Box<dyn Iterator<Item = &FileInfo>> =
                 self.get_files_iterator(files);
+            let file_info_printer: FileInfoPrinter = FileInfoPrinter::new(2, 0.9);
 
             self.terminal.writeln_ansi("\nFiles:", &GreenANSI);
             for file_info in files_iterator {
-                self.print_file_info_path(&file_info);
-                self.print_file_info_metadata(&file_info);
+                file_info_printer.print(file_info);
+                // self.print_file_info_path(&file_info);
+                // self.print_file_info_metadata(&file_info);
                 println!();
             }
         } else {

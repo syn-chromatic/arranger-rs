@@ -367,6 +367,7 @@ impl Terminal {
         length
     }
 
+    #[allow(dead_code)]
     pub fn writeln_separated_parameters<T: ANSICode + 'static>(
         &self,
         parts: &[&str],

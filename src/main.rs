@@ -5,7 +5,6 @@ mod parsers;
 mod python;
 mod rust;
 mod search;
-mod test;
 mod utils;
 
 use std::io;
