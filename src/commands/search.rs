@@ -7,11 +7,10 @@ use std::time::UNIX_EPOCH;
 
 use regex::Regex;
 
+use crate::general::terminal::RedANSI;
 use crate::general::terminal::Terminal;
-use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
 
 use crate::commands::configuration::SearchSort;
-use crate::general::path::WPath;
 use crate::general::table_display::DynamicTable;
 use crate::general::table_display::FileInfoTable;
 use crate::search::file::FileSearch;
@@ -171,11 +170,8 @@ impl SearchCommand {
             let file_info_printer: FileInfoTable = FileInfoTable::new(2, 0.9);
             println!();
             file_info_printer.print_header("FILES");
-            // self.terminal.writeln_ansi("\nFiles:", &GreenANSI);
             for file_info in files_iterator {
                 file_info_printer.print(file_info);
-                // self.print_file_info_path(&file_info);
-                // self.print_file_info_metadata(&file_info);
                 println!();
             }
         } else {
@@ -209,36 +205,5 @@ impl SearchCommand {
         table.add_parameter("Regex", regex);
         table.print();
         println!();
-    }
-
-    fn print_file_info_path(&self, file_info: &FileInfo) {
-        let file: WPath = file_info.get_path().into();
-        let path_str: String = format!("[{:?}]", file);
-        let parts: [&str; 2] = ["Path: ", &path_str];
-        self.terminal.writeln_parameter(&parts, &CyanANSI);
-    }
-
-    fn print_file_info_metadata(&self, file_info: &FileInfo) {
-        let size: String = file_info.get_formatted_size();
-        let size_str: String = format!("[{}]", size);
-        let creation: String = file_info.get_formatted_created_time();
-        let creation_str: String = format!("[{}]", creation);
-        let modified: String = file_info.get_formatted_modified_time();
-        let modified_str: String = format!("[{}]", modified);
-
-        let parts: [&str; 6] = [
-            "Size: ",
-            &size_str,
-            "Created: ",
-            &creation_str,
-            "Modified: ",
-            &modified_str,
-        ];
-
-        let color: &CyanANSI = &CyanANSI;
-        let sep: &str = " | ";
-
-        self.terminal
-            .writeln_separated_parameters(&parts, color, sep);
     }
 }
