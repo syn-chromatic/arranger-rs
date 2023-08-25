@@ -16,10 +16,10 @@ use crate::commands::configuration::PythonDownloadOption;
 use crate::commands::configuration::VirtualEnvExecuteOption;
 use crate::commands::configuration::VirtualEnvOption;
 
+use crate::general::grid_printer::DynamicTable;
 use crate::general::https::HTTPS;
 use crate::general::path::WPath;
 use crate::general::version::SemanticVersion;
-use crate::utils::ParametersPrinter;
 
 use crate::python::ftp::PythonFTPRetriever;
 use crate::python::pip::{PipMetadata, PipPackage, PipPackageParser};
@@ -113,10 +113,11 @@ impl PythonFixEnvCommand {
 
     fn print_search_parameters(&self) {
         let deep_search: bool = self.option.deep_search;
-        let mut parameters_printer = ParametersPrinter::new(2);
-        parameters_printer.set_header("Fix Venv Parameters");
-        parameters_printer.add_parameter(("Deep Search", deep_search));
-        parameters_printer.print_parameters();
+        let mut table = DynamicTable::new(0.6, 1);
+        table.set_header("Fix Venv Parameters");
+        table.add_parameter("Deep Search", deep_search);
+        table.print();
+        println!();
     }
 }
 
@@ -172,11 +173,12 @@ impl PythonExecuteCommand {
         let deep_search: bool = self.option.deep_search;
         let command: &String = &self.option.command;
 
-        let mut parameters_printer = ParametersPrinter::new(2);
-        parameters_printer.set_header("Execute Parameters");
-        parameters_printer.add_parameter(("Deep Search", deep_search));
-        parameters_printer.add_parameter(("Command", command));
-        parameters_printer.print_parameters();
+        let mut table: DynamicTable = DynamicTable::new(0.6, 1);
+        table.set_header("Execute Parameters");
+        table.add_parameter("Deep Search", deep_search);
+        table.add_parameter("Command", command);
+        table.print();
+        println!();
     }
 }
 
@@ -230,13 +232,13 @@ impl PythonPackagesCommand {
         let save: bool = self.option.save;
         let distill: bool = self.option.distill;
 
-        let mut parameters_printer: ParametersPrinter = ParametersPrinter::new(2);
-        parameters_printer.set_header("Packages Parameters");
-        parameters_printer.add_parameter(("Deep Search", deep_search));
-        parameters_printer.add_parameter(("Distill", distill));
-        parameters_printer.add_parameter(("Save", save));
-
-        parameters_printer.print_parameters();
+        let mut table: DynamicTable = DynamicTable::new(0.6, 1);
+        table.set_header("Packages Parameters");
+        table.add_parameter("Deep Search", deep_search);
+        table.add_parameter("Distill", distill);
+        table.add_parameter("Save", save);
+        table.print();
+        println!();
     }
 
     fn get_filename_from_option(&self) -> &str {
@@ -382,13 +384,17 @@ impl PythonDLCommand {
         let arch: &str = &self.option.architecture;
         let platform: &str = &self.option.platform;
         let package_type: &str = &self.option.package_type;
+        let recent_patch: bool = self.option.recent_patch;
+        let list_structure: bool = self.option.list_structure;
 
-        let mut parameters_printer: ParametersPrinter = ParametersPrinter::new(2);
-        parameters_printer.set_header("Download Parameters");
-        parameters_printer.add_parameter(("Arch", arch));
-        parameters_printer.add_parameter(("Platform", platform));
-        parameters_printer.add_parameter(("Type", package_type));
-
-        parameters_printer.print_parameters();
+        let mut table: DynamicTable = DynamicTable::new(0.6, 1);
+        table.set_header("Download Parameters");
+        table.add_parameter("Arch", arch);
+        table.add_parameter("Platform", platform);
+        table.add_parameter("Type", package_type);
+        table.add_parameter("Most recent Patch", recent_patch);
+        table.add_parameter("List Results", list_structure);
+        table.print();
+        println!();
     }
 }

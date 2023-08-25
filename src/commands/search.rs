@@ -11,11 +11,11 @@ use crate::general::terminal::Terminal;
 use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
 
 use crate::commands::configuration::SearchSort;
+use crate::general::grid_printer::DynamicTable;
 use crate::general::grid_printer::FileInfoPrinter;
 use crate::general::path::WPath;
 use crate::search::file::FileSearch;
 use crate::search::info::FileInfo;
-use crate::utils::ParametersPrinter;
 use crate::SearchOption;
 
 pub struct SearchCommand {
@@ -192,22 +192,23 @@ impl SearchCommand {
         let limit: &Option<usize> = &self.option.limit;
         let regex: bool = self.option.regex;
 
-        let mut parameters_printer: ParametersPrinter = ParametersPrinter::new(2);
-        parameters_printer.set_header("Search Parameters");
-        parameters_printer.add_parameter(("Filename", filename));
-        parameters_printer.add_parameter(("Extensions", extensions));
-        parameters_printer.add_parameter(("Excluded Dirs", excluded_dirs));
+        let mut table: DynamicTable = DynamicTable::new(0.6, 1);
+        table.set_header("Search Parameters");
+        table.add_parameter("Filename", filename);
+        table.add_parameter("Extensions", extensions);
+        table.add_parameter("Excluded Dirs", excluded_dirs);
 
         if let Some(sort) = sort {
-            parameters_printer.add_parameter(("Sorting", sort));
+            table.add_parameter("Sorting", sort);
         }
 
         if let Some(limit) = limit {
-            parameters_printer.add_parameter(("Limit", limit));
+            table.add_parameter("Limit", limit);
         }
 
-        parameters_printer.add_parameter(("Regex", regex));
-        parameters_printer.print_parameters();
+        table.add_parameter("Regex", regex);
+        table.print();
+        println!();
     }
 
     fn print_file_info_path(&self, file_info: &FileInfo) {
