@@ -2,6 +2,7 @@ use std::fmt;
 
 use crate::general::path::WPath;
 use crate::search::info::FileInfo;
+use crate::utils::StringOp;
 
 use crate::general::terminal::ANSICode;
 use crate::general::terminal::Terminal;
@@ -17,8 +18,8 @@ enum TableCharacter {
     TopT,
     BottomT,
     MidT,
-    MidLeftT,
     MidRightT,
+    MidLeftT,
 }
 
 impl TableCharacter {
@@ -33,8 +34,24 @@ impl TableCharacter {
             TableCharacter::TopT => '┬',
             TableCharacter::BottomT => '┴',
             TableCharacter::MidT => '┼',
-            TableCharacter::MidLeftT => '├',
             TableCharacter::MidRightT => '┤',
+            TableCharacter::MidLeftT => '├',
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            TableCharacter::TopRight => "┐",
+            TableCharacter::TopLeft => "┌",
+            TableCharacter::BottomRight => "┘",
+            TableCharacter::BottomLeft => "└",
+            TableCharacter::Horizontal => "─",
+            TableCharacter::Vertical => "│",
+            TableCharacter::TopT => "┬",
+            TableCharacter::BottomT => "┴",
+            TableCharacter::MidT => "┼",
+            TableCharacter::MidRightT => "┤",
+            TableCharacter::MidLeftT => "├",
         }
     }
 }
@@ -334,6 +351,8 @@ impl DynamicTable {
     }
 
     pub fn set_header(&mut self, header: &str) {
+        let width: usize = self.width;
+        let header: String = StringOp::trim_with_ellipsis(header, width, 2);
         self.header = header.to_string();
     }
 
@@ -343,18 +362,26 @@ impl DynamicTable {
         self.parameters.push((attribute, value));
     }
 
-    pub fn print(&self) {
-        let header: String = self.get_padded_header();
+    pub fn print(&mut self) {
+        let (attr_width, value_width): (usize, usize) = self.compute_widths();
+        let width: usize = attr_width + value_width + 3;
+        let header: String = self.get_padded_header(width);
         let header: String = self.get_header_ansi(&header);
-        let table: String = self.generate();
+        let table: String = self.generate_table(attr_width, value_width);
         println!("{}", header);
         println!("{}", table);
     }
 }
 
 impl DynamicTable {
-    fn generate(&self) -> String {
-        let (attr_width, value_width): (usize, usize) = self.compute_widths();
+    fn generate_table(&self, attr_width: usize, value_width: usize) -> String {
+        let rows: Vec<Option<(String, String)>> = self.get_rows(attr_width, value_width);
+        let lines: Vec<String> = self.get_lines(rows, attr_width, value_width);
+        let string: String = lines.join("\n");
+        string
+    }
+
+    fn get_rows(&self, attr_width: usize, value_width: usize) -> Vec<Option<(String, String)>> {
         let mut rows: Vec<Option<(String, String)>> = Vec::new();
 
         for (attr, value) in &self.parameters {
@@ -366,12 +393,21 @@ impl DynamicTable {
             attr_lines.resize(max_lines, "".to_string());
             value_lines.resize(max_lines, "".to_string());
 
-            for (attr_line, val_line) in attr_lines.iter().zip(value_lines.iter()) {
-                rows.push(Some((attr_line.clone(), val_line.clone())));
+            for (attr_line, value_line) in attr_lines.iter().zip(value_lines.iter()) {
+                rows.push(Some((attr_line.clone(), value_line.clone())));
             }
             rows.push(None);
         }
+        rows.pop();
+        rows
+    }
 
+    fn get_lines(
+        &self,
+        rows: Vec<Option<(String, String)>>,
+        attr_width: usize,
+        value_width: usize,
+    ) -> Vec<String> {
         let mut lines: Vec<String> = Vec::new();
         let top_line: String = self.get_top_line(attr_width, value_width);
         lines.push(top_line);
@@ -379,8 +415,8 @@ impl DynamicTable {
         for row in &rows {
             if let Some((attribute, value)) = row {
                 let attribute: String = self.format_to_padded_width(attribute, attr_width);
-                let formatted_value: String = self.format_to_padded_width(value, value_width);
-                let line: String = self.format_line(&attribute, &formatted_value);
+                let value: String = self.format_to_padded_width(value, value_width);
+                let line: String = self.format_line(&attribute, &value);
 
                 lines.push(line);
             } else {
@@ -389,25 +425,54 @@ impl DynamicTable {
             }
         }
 
-        lines.pop();
         let bottom_line: String = self.get_bottom_line(attr_width, value_width);
         lines.push(bottom_line);
-
-        let string: String = lines.join("\n");
-        string
+        lines
     }
 
     fn compute_widths(&self) -> (usize, usize) {
-        let max_key_length: usize = self
+        let max_attr_length: usize = self.get_max_attr_length();
+        let attr_width: usize = max_attr_length + 2 + (self.padding * 2);
+
+        let max_value_length: usize = self.get_max_value_length();
+        let value_width: usize = max_value_length + 2 + (self.padding * 2);
+
+        (attr_width, value_width)
+    }
+
+    fn clamp_length(&self, mut length: usize) -> usize {
+        let half_width: usize = (self.width as f32 / 2.0) as usize;
+        let half_header: usize = ((self.header.len() + 1) as f32 / 2.0) as usize;
+
+        if length > half_width {
+            length = half_width;
+        } else if length < half_header {
+            length = half_header;
+        }
+
+        length
+    }
+
+    fn get_max_attr_length(&self) -> usize {
+        let max_attr_length: usize = self
             .parameters
             .iter()
-            .map(|(key, _)| key.len())
+            .map(|(attr, _)| attr.len())
             .max()
             .unwrap_or(0);
-        let key_width: usize = max_key_length + 2 + (self.padding * 2);
-        let value_width: usize = self.width - key_width - 3;
+        let max_attr_length: usize = self.clamp_length(max_attr_length);
+        max_attr_length
+    }
 
-        (key_width, value_width)
+    fn get_max_value_length(&self) -> usize {
+        let max_value_length: usize = self
+            .parameters
+            .iter()
+            .map(|(_, value)| value.len())
+            .max()
+            .unwrap_or(0);
+        let max_value_length: usize = self.clamp_length(max_value_length);
+        max_value_length
     }
 
     fn split_text(&self, text: &str, width: usize) -> Vec<String> {
@@ -443,36 +508,60 @@ impl DynamicTable {
     }
 
     fn get_top_line(&self, attr_width: usize, value_width: usize) -> String {
-        let top_line: String = format!("┌{}┬{}┐", "─".repeat(attr_width), "─".repeat(value_width));
+        let hrz_attr: String = TableCharacter::Horizontal.as_str().repeat(attr_width);
+        let hrz_value: String = TableCharacter::Horizontal.as_str().repeat(value_width);
+        let top_left: char = TableCharacter::TopLeft.as_char();
+        let top_t: char = TableCharacter::TopT.as_char();
+        let top_right: char = TableCharacter::TopRight.as_char();
+
+        let top_line: String = format!(
+            "{}{}{}{}{}",
+            top_left, hrz_attr, top_t, hrz_value, top_right
+        );
         top_line
     }
 
     fn get_separator_line(&self, attr_width: usize, value_width: usize) -> String {
-        let separator_key: String = "─".repeat(attr_width);
-        let separator_value: String = "─".repeat(value_width);
-        let separator_line: String = format!("├{}┼{}┤", separator_key, separator_value);
+        let hrz_attr: String = TableCharacter::Horizontal.as_str().repeat(attr_width);
+        let hrz_value: String = TableCharacter::Horizontal.as_str().repeat(value_width);
+        let mid_left: char = TableCharacter::MidLeftT.as_char();
+        let mid_t: char = TableCharacter::MidT.as_char();
+        let mid_right: char = TableCharacter::MidRightT.as_char();
+
+        let separator_line: String = format!(
+            "{}{}{}{}{}",
+            mid_left, hrz_attr, mid_t, hrz_value, mid_right
+        );
         separator_line
     }
 
     fn get_bottom_line(&self, attr_width: usize, value_width: usize) -> String {
-        let bottom_line: String =
-            format!("└{}┴{}┘", "─".repeat(attr_width), "─".repeat(value_width));
+        let hrz_attr: String = TableCharacter::Horizontal.as_str().repeat(attr_width);
+        let hrz_value: String = TableCharacter::Horizontal.as_str().repeat(value_width);
+        let bottom_left: char = TableCharacter::BottomLeft.as_char();
+        let bottom_t: char = TableCharacter::BottomT.as_char();
+        let bottom_right: char = TableCharacter::BottomRight.as_char();
+
+        let bottom_line: String = format!(
+            "{}{}{}{}{}",
+            bottom_left, hrz_attr, bottom_t, hrz_value, bottom_right
+        );
         bottom_line
     }
 
-    fn get_header_padding_length(&self) -> usize {
-        if self.header.len() == 0 || self.header.len() >= self.width {
+    fn get_header_padding_length(&self, width: usize) -> usize {
+        if self.header.len() == 0 || self.header.len() >= width {
             return 0;
         }
 
-        let total_padding: usize = self.width - self.header.len();
+        let total_padding: usize = width - self.header.len();
         total_padding / 2
     }
 
-    fn get_padded_header(&self) -> String {
-        let padding_length: usize = self.get_header_padding_length();
+    fn get_padded_header(&self, width: usize) -> String {
+        let padding_length: usize = self.get_header_padding_length(width);
         let padding: String = " ".repeat(padding_length);
-        let residual: &str = if (self.header.len() + self.width) % 2 == 1 {
+        let residual: &str = if (self.header.len() + width) % 2 == 1 {
             " "
         } else {
             ""

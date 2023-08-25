@@ -54,6 +54,19 @@ impl StringOp {
         Some(&s[start_byte..end_byte])
     }
 
+    pub fn trim_with_ellipsis(s: &str, length: usize, ellipsis: usize) -> String {
+        if s.len() <= length {
+            return s.to_string();
+        }
+        let trimmed = &s[..s
+            .char_indices()
+            .nth(length - ellipsis)
+            .map_or(s.len(), |(i, _)| i)];
+
+        let s: String = format!("{}{}", trimmed, ".".repeat(ellipsis));
+        s
+    }
+
     pub fn split_retain_delim_left<'a>(
         s: &'a str,
         delimiter: &'a str,
