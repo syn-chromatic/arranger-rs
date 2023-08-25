@@ -1,7 +1,9 @@
 use crate::general::path::WPath;
 use crate::search::info::FileInfo;
 
+use crate::general::terminal::ANSICode;
 use crate::general::terminal::Terminal;
+use crate::general::terminal::{BlackANSI, CombinedANSI, YellowBackgroundANSI};
 
 enum GridCharacter {
     TopRight,
@@ -52,6 +54,16 @@ impl FileInfoPrinter {
             terminal,
             padding,
             width_scale,
+        }
+    }
+
+    pub fn print_header(&self, header: &str) {
+        let size: Option<(usize, usize)> = term_size::dimensions();
+        if let Some((width, _)) = size {
+            let length: usize = ((width as f32 * self.width_scale) as usize) / 2;
+            let padded_header: String = self.get_padded_header(header, length);
+            let header_ansi: CombinedANSI = self.get_header_ansi();
+            self.terminal.writeln_ansi(&padded_header, &header_ansi);
         }
     }
 
@@ -243,5 +255,30 @@ impl FileInfoPrinter {
             split.push(mutable_string);
         }
         split
+    }
+}
+
+impl FileInfoPrinter {
+    fn get_header_padding_length(&self, header: &str, length: usize) -> usize {
+        if header.len() > 0 {
+            let halved_header: usize = (header.len() as f32 / 2.0).ceil() as usize;
+            if (length + 1) > halved_header {
+                let padding_length: usize = (length + 1) - halved_header;
+                return padding_length;
+            }
+        }
+        return 1;
+    }
+
+    fn get_padded_header(&self, header: &str, length: usize) -> String {
+        let padding_length: usize = self.get_header_padding_length(header, length);
+        let padding: String = " ".repeat(padding_length);
+        let padded_header: String = padding.to_string() + &header + &padding;
+        padded_header
+    }
+
+    fn get_header_ansi(&self) -> CombinedANSI {
+        let ansi: CombinedANSI = YellowBackgroundANSI.combine(&BlackANSI);
+        ansi
     }
 }

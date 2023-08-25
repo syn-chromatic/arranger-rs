@@ -169,8 +169,9 @@ impl SearchCommand {
             let files_iterator: Box<dyn Iterator<Item = &FileInfo>> =
                 self.get_files_iterator(files);
             let file_info_printer: FileInfoPrinter = FileInfoPrinter::new(2, 0.9);
-
-            self.terminal.writeln_ansi("\nFiles:", &GreenANSI);
+            println!();
+            file_info_printer.print_header("FILES");
+            // self.terminal.writeln_ansi("\nFiles:", &GreenANSI);
             for file_info in files_iterator {
                 file_info_printer.print(file_info);
                 // self.print_file_info_path(&file_info);
