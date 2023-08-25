@@ -45,8 +45,9 @@ pub struct FileInfoPrinter {
 
 impl FileInfoPrinter {
     pub fn new(padding: usize, width_scale: f32) -> FileInfoPrinter {
-        if width_scale < 0.0 || width_scale > 1.0 {
-            panic!("width_scale is not within 0.0 to 1.0 range");
+        let width_scale: f32 = Self::round_to_one_decimal(width_scale);
+        if width_scale < 0.1 || width_scale > 0.9 {
+            panic!("width_scale is not within 0.1 to 0.9 range");
         }
 
         let terminal: Terminal = Terminal::new();
@@ -104,7 +105,7 @@ impl FileInfoPrinter {
         let horizontal: char = GridCharacter::Horizontal.as_char();
         let top_t: char = GridCharacter::TopT.as_char();
         for idx in 1..width - 1 {
-            if idx % split_count == 0 {
+            if idx % split_count == 0 && idx != width - 2 {
                 print!("{}", top_t);
                 continue;
             }
@@ -123,7 +124,7 @@ impl FileInfoPrinter {
         let horizontal: char = GridCharacter::Horizontal.as_char();
         let bottom_t: char = GridCharacter::BottomT.as_char();
         for idx in 1..width - 1 {
-            if idx % split_count == 0 {
+            if idx % split_count == 0 && idx != width - 2 {
                 print!("{}", bottom_t);
                 continue;
             }
@@ -164,33 +165,24 @@ impl FileInfoPrinter {
         let created_str: String = format!("Created: {}", created);
         let modified_str: String = format!("Modified: {}", modified);
 
-        let mut length: usize = width - 2;
-        let mut split_length: usize = length / 3;
         let mut splits: Vec<Vec<String>> = Vec::new();
-        let mut split_lengths: Vec<usize> = Vec::new();
+        let split_lengths = self.get_split_lengths(width);
 
         for i in 0..3 {
-            length -= split_length;
-
-            if split_length > length {
-                split_length -= length;
-            }
+            let split_length = split_lengths[i];
 
             if i == 0 {
                 let split_size: Vec<String> =
                     self.split_by_length(&size_str, split_length - (self.padding * 2));
                 splits.push(split_size);
-                split_lengths.push(split_length);
             } else if i == 1 {
                 let split_created: Vec<String> =
                     self.split_by_length(&created_str, split_length - (self.padding * 2));
                 splits.push(split_created);
-                split_lengths.push(split_length);
             } else if i == 2 {
                 let split_modified: Vec<String> =
                     self.split_by_length(&modified_str, split_length - (self.padding * 2));
                 splits.push(split_modified);
-                split_lengths.push(split_length);
             }
         }
 
@@ -259,6 +251,29 @@ impl FileInfoPrinter {
 }
 
 impl FileInfoPrinter {
+    fn round_to_one_decimal(num: f32) -> f32 {
+        (num * 10.0).floor() / 10.0
+    }
+
+    fn get_split_lengths(&self, width: usize) -> Vec<usize> {
+        let split_count: usize = width / 3;
+        let mut length: usize = 0;
+        let mut split_lengths: Vec<usize> = Vec::new();
+
+        for idx in 1..width - 1 {
+            if idx % split_count == 0 && idx != width - 2 {
+                split_lengths.push(length);
+                length = 0;
+                continue;
+            }
+            length += 1;
+        }
+        if length != 0 {
+            split_lengths.push(length);
+        }
+        split_lengths
+    }
+
     fn get_header_padding_length(&self, header: &str, length: usize) -> usize {
         if header.len() > 0 {
             let halved_header: usize = (header.len() as f32 / 2.0).ceil() as usize;
