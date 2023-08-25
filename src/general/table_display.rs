@@ -350,7 +350,9 @@ impl DynamicTable {
         println!("{}", header);
         println!("{}", table);
     }
+}
 
+impl DynamicTable {
     fn generate(&self) -> String {
         let (attr_width, value_width): (usize, usize) = self.compute_widths();
         let mut rows: Vec<Option<(String, String)>> = Vec::new();
