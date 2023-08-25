@@ -80,9 +80,9 @@ impl SearchProgress {
             &match_string,
             "Searches: ",
             &search_string,
-            "Search Size: ",
+            "Size: ",
             &size_string,
-            "Elapsed Time: ",
+            "Time: ",
             &time_string,
         ];
 

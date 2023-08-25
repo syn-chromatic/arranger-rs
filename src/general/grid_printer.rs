@@ -81,6 +81,7 @@ impl FileInfoPrinter {
             self.print_metadata(width, file_info);
             println!();
             self.print_bottom_line(width);
+            println!();
         }
     }
 
