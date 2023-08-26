@@ -290,6 +290,7 @@ impl Terminal {
         }
     }
 
+    #[allow(dead_code)]
     pub fn write(&self, text: &str) {
         let ansi_code_v: String = self.ansi_code.value();
         let ansi_reset_v: String = self.ansi_reset.value();
