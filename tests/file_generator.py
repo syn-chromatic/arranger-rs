@@ -92,5 +92,5 @@ class FileGenerator(FileGeneratorBase):
 
 
 if __name__ == "__main__":
-    fg = FileGenerator("./generated_files")
+    fg = FileGenerator("./benchmark_files")
     fg.generate_empty_files(500_000)
