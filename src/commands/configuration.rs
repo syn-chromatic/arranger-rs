@@ -132,7 +132,7 @@ pub struct RustVSCodeTasksOption {
 
 #[derive(Debug, Parser)]
 pub struct SearchOption {
-    /// Specify Filename [Searches by whole name when used without regex]
+    /// Specify Filename [Matches by start of name when used without regex]
     #[arg(short = 'F', long = "filename")]
     pub filename: Option<String>,
 

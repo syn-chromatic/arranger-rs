@@ -14,9 +14,8 @@ use crate::search::progress::SearchProgress;
 
 pub struct FileSearch {
     root: Option<PathBuf>,
-    exclusive_filenames: HashSet<String>,
-    exclusive_file_stems: HashSet<String>,
-    exclusive_file_stem_regex: Option<Regex>,
+    exclusive_filename: String,
+    exclusive_filename_regex: Option<Regex>,
     exclusive_exts: HashSet<String>,
     exclude_dirs: HashSet<PathBuf>,
     quit_directory_on_match: bool,
@@ -25,18 +24,16 @@ pub struct FileSearch {
 impl FileSearch {
     pub fn new() -> Self {
         let root: Option<PathBuf> = None;
-        let exclusive_filenames: HashSet<String> = HashSet::new();
-        let exclusive_file_stems: HashSet<String> = HashSet::new();
-        let exclusive_file_stem_regex: Option<Regex> = None;
+        let exclusive_filename: String = String::new();
+        let exclusive_filename_regex: Option<Regex> = None;
         let exclusive_exts: HashSet<String> = HashSet::new();
         let exclude_dirs: HashSet<PathBuf> = HashSet::new();
         let quit_directory_on_match: bool = false;
 
         FileSearch {
             root,
-            exclusive_filenames,
-            exclusive_file_stems,
-            exclusive_file_stem_regex,
+            exclusive_filename,
+            exclusive_filename_regex,
             exclusive_exts,
             exclude_dirs,
             quit_directory_on_match,
@@ -47,37 +44,14 @@ impl FileSearch {
         self.root = Some(PathBuf::from(root.as_ref()));
     }
 
-    pub fn set_exclusive_filenames<I, S>(&mut self, filenames: I)
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<str>,
-    {
-        let mut exclusive_filenames: HashSet<String> = HashSet::new();
-        for filename in filenames {
-            let filename: String = filename.as_ref().to_string().to_lowercase();
-            exclusive_filenames.insert(filename);
-        }
-
-        self.exclusive_filenames = exclusive_filenames;
+    pub fn set_exclusive_filename(&mut self, filename: &str) {
+        self.exclusive_filename = filename.to_string();
     }
 
-    pub fn set_exclusive_file_stems<I, S>(&mut self, file_stems: I)
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<str>,
-    {
-        let mut exclusive_file_stems: HashSet<String> = HashSet::new();
-
-        for file_stem in file_stems {
-            let file_stem: String = file_stem.as_ref().to_string().to_lowercase();
-            exclusive_file_stems.insert(file_stem);
-        }
-
-        self.exclusive_file_stems = exclusive_file_stems;
-    }
-
-    pub fn set_exclusive_file_stem_regex(&mut self, file_stem_regex: &Regex) {
-        self.exclusive_file_stem_regex = Some(file_stem_regex.clone());
+    pub fn set_exclusive_filename_regex(&mut self, filename: &str) -> Result<(), regex::Error> {
+        let regex: Regex = Regex::new(&filename)?;
+        self.exclusive_filename_regex = Some(regex);
+        return Ok(());
     }
 
     pub fn set_exclusive_extensions<I, S>(&mut self, exts: I)
@@ -114,6 +88,26 @@ impl FileSearch {
 
     pub fn set_quit_directory_on_match(&mut self, state: bool) {
         self.quit_directory_on_match = state;
+    }
+
+    pub fn clear_root(&mut self) {
+        self.root = None;
+    }
+
+    pub fn clear_exclusive_filename(&mut self) {
+        self.exclusive_filename = String::new();
+    }
+
+    pub fn clear_exclusive_filename_regex(&mut self) {
+        self.exclusive_filename_regex = None;
+    }
+
+    pub fn clear_exclusive_extensions(&mut self) {
+        self.exclusive_exts = HashSet::new();
+    }
+
+    pub fn clear_exclude_directories(&mut self) {
+        self.exclude_dirs = HashSet::new();
     }
 
     pub fn search_files(&self) -> HashSet<FileInfo> {
@@ -186,14 +180,15 @@ impl FileSearch {
     }
 
     fn evaluate_entry_criteria(&self, path: &PathBuf) -> bool {
-        let is_exclusive_filename: bool = self.is_exclusive_filename(path);
-        let is_exclusive_file_stem: bool = self.is_exclusive_file_stem(path);
-        let is_exclusive_file_stem_regex: bool = self.is_exclusive_file_stem_regex(path);
+        let filename_regex: bool = self.exclusive_filename_regex.is_some();
+        let is_exclusive_filename: bool = if filename_regex {
+            self.is_exclusive_filename_regex(path)
+        } else {
+            self.is_exclusive_filename(path)
+        };
+
         let is_exclusive_extension: bool = self.is_exclusive_extension(path);
-        let entry_criteria: bool = is_exclusive_filename
-            && is_exclusive_file_stem
-            && is_exclusive_file_stem_regex
-            && is_exclusive_extension;
+        let entry_criteria: bool = is_exclusive_filename && is_exclusive_extension;
 
         entry_criteria
     }
@@ -220,37 +215,26 @@ impl FileSearch {
     }
 
     fn is_exclusive_filename(&self, path: &PathBuf) -> bool {
-        if self.exclusive_filenames.is_empty() {
-            return true;
+        if self.exclusive_filename.is_empty() {
+            return false;
         }
 
         let filename: &OsStr = path.file_name().unwrap_or_default();
         let filename: String = filename.to_string_lossy().to_lowercase();
-        let filename_exists: bool = self.exclusive_filenames.contains(&filename);
+        let filename_exists: bool = filename.starts_with(&self.exclusive_filename);
         filename_exists
     }
 
-    fn is_exclusive_file_stem(&self, path: &PathBuf) -> bool {
-        if self.exclusive_file_stems.is_empty() {
-            return true;
+    fn is_exclusive_filename_regex(&self, path: &PathBuf) -> bool {
+        if self.exclusive_filename_regex.is_none() {
+            return false;
         }
 
-        let file_stem: &OsStr = path.file_stem().unwrap_or_default();
-        let file_stem: String = file_stem.to_string_lossy().to_lowercase();
-        let file_stem_exists: bool = self.exclusive_file_stems.contains(&file_stem);
-        file_stem_exists
-    }
+        let filename: &OsStr = path.file_name().unwrap_or_default();
+        let filename: String = filename.to_string_lossy().to_lowercase();
 
-    fn is_exclusive_file_stem_regex(&self, path: &PathBuf) -> bool {
-        if self.exclusive_file_stem_regex.is_none() {
-            return true;
-        }
-
-        let file_stem: &OsStr = path.file_stem().unwrap_or_default();
-        let file_stem: String = file_stem.to_string_lossy().to_lowercase();
-
-        let regex: &Regex = self.exclusive_file_stem_regex.as_ref().unwrap();
-        let is_match: bool = regex.is_match(&file_stem);
+        let regex: &Regex = self.exclusive_filename_regex.as_ref().unwrap();
+        let is_match: bool = regex.is_match(&filename);
         is_match
     }
 

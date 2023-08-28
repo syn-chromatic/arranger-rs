@@ -15,6 +15,7 @@ pub struct SearchProgress {
     search_bytes: usize,
     previous_length: usize,
     time: Instant,
+    elapsed_time_ns: u128,
 }
 
 impl SearchProgress {
@@ -25,6 +26,7 @@ impl SearchProgress {
         let search_bytes: usize = 0;
         let previous_length: usize = 0;
         let time: Instant = Instant::now();
+        let elapsed_time_ns: u128 = 0;
 
         SearchProgress {
             terminal,
@@ -33,7 +35,12 @@ impl SearchProgress {
             search_bytes,
             previous_length,
             time,
+            elapsed_time_ns,
         }
+    }
+
+    pub fn get_elapsed_time_ns(&self) -> u128 {
+        self.elapsed_time_ns
     }
 
     pub fn increment_search_count(&mut self) {
@@ -69,11 +76,18 @@ impl SearchProgress {
 }
 
 impl SearchProgress {
+    fn update_elapsed_time_ns(&mut self) {
+        let elapsed_time_ns: u128 = self.time.elapsed().as_nanos();
+        self.elapsed_time_ns = elapsed_time_ns;
+    }
+
     fn write_progress(&mut self) {
         let match_string: String = self.match_counter.to_string();
         let search_string: String = self.search_counter.to_string();
         let size_string: String = format_size(self.search_bytes);
-        let time_string: String = format_time(self.time.elapsed().as_nanos());
+
+        self.update_elapsed_time_ns();
+        let time_string: String = format_time(self.get_elapsed_time_ns());
 
         let parts: [&str; 8] = [
             "\rMatches: ",

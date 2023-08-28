@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 use std::env;
+use std::error::Error;
 use std::io;
 use std::path::PathBuf;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
-
-use regex::Regex;
 
 use crate::general::terminal::RedANSI;
 use crate::general::terminal::Terminal;
@@ -53,7 +52,7 @@ impl SearchCommand {
         &self,
         root: &PathBuf,
         file_search: &mut FileSearch,
-    ) -> Result<(), io::Error> {
+    ) -> Result<(), Box<dyn Error>> {
         let exclusive_exts: &Vec<String> = &self.option.extensions;
         let excluded_dirs: &Vec<String> = &self.option.excluded_dirs;
 
@@ -62,34 +61,32 @@ impl SearchCommand {
         let exclusion_result: Result<(), io::Error> =
             file_search.set_exclude_directories(excluded_dirs);
 
-        if let Err(exclusion_error) = exclusion_result {
-            let parts: [&str; 2] = ["Directory Exclusion Error: ", &exclusion_error.to_string()];
+        if let Err(error) = exclusion_result {
+            let parts: [&str; 2] = ["Directory Exclusion Error: ", &error.to_string()];
             self.terminal.writeln_parameter(&parts, &RedANSI);
-            return Err(exclusion_error);
+            return Err(Box::new(error));
         }
 
-        self.set_file_search_file_stem(file_search);
+        self.set_file_search_filename(file_search)?;
         Ok(())
     }
 
-    fn set_file_search_file_stem(&self, file_search: &mut FileSearch) {
+    fn set_file_search_filename(&self, file_search: &mut FileSearch) -> Result<(), Box<dyn Error>> {
         let filename: &Option<String> = &self.option.filename;
 
         if let Some(filename) = filename {
             if self.option.regex {
-                let regex: Result<Regex, regex::Error> = Regex::new(&filename);
-                if let Ok(regex) = regex {
-                    file_search.set_exclusive_file_stem_regex(&regex);
-                } else {
-                    let error: String = regex.unwrap_err().to_string();
-                    self.terminal.writeln_ansi(&error, &RedANSI);
-                    return;
+                let result: Result<(), regex::Error> =
+                    file_search.set_exclusive_filename_regex(filename);
+                if let Err(error) = result {
+                    self.terminal.writeln_ansi(&error.to_string(), &RedANSI);
+                    return Err(Box::new(error));
                 }
             } else {
-                let exclusive_file_stems: Vec<&String> = vec![filename];
-                file_search.set_exclusive_file_stems(exclusive_file_stems);
+                file_search.set_exclusive_filename(filename);
             }
         }
+        Ok(())
     }
 
     fn get_filename_or_default(&self) -> &str {

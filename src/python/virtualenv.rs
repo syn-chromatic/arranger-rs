@@ -239,11 +239,11 @@ impl VirtualEnvSearch {
     fn find_config(&self, root: &PathBuf) -> HashSet<FileInfo> {
         let mut file_search: FileSearch = FileSearch::new();
 
-        let exclusive_filenames: Vec<&str> = vec!["pyvenv.cfg"];
+        let filename: &str = "pyvenv.cfg";
         let quit_directory_on_match: bool = !self.deep_search;
 
         file_search.set_root(root);
-        file_search.set_exclusive_filenames(exclusive_filenames);
+        file_search.set_exclusive_filename(filename);
         file_search.set_quit_directory_on_match(quit_directory_on_match);
 
         let files: HashSet<FileInfo> = file_search.search_files();

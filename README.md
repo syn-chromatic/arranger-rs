@@ -134,7 +134,7 @@ ___
   - <a name="search"></a>**search**
     ```
     Options:
-    -F/--filename : Specify Filename [Searches by whole name when used without regex]
+    -F/--filename : Specify Filename [Matches by start of name when used without regex]
     -E/--extensions : Specify Extensions [Can be used multiple times to add items]
     -X/--exclude-dir : Specify Directory To Exclude [Can be used multiple times to add items]
     -S/--sort : Specify Sorting Of Results [size_asc, size_desc, created_asc, created_desc, modified_asc, modified_desc]
