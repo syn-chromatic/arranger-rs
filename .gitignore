@@ -1,3 +1,4 @@
 .cargo
 cargo.lock
 /target
+/tests/benchmark_files

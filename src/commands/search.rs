@@ -10,12 +10,12 @@ use regex::Regex;
 use crate::general::terminal::RedANSI;
 use crate::general::terminal::Terminal;
 
+use crate::commands::configuration::SearchOption;
 use crate::commands::configuration::SearchSort;
 use crate::general::table_display::DynamicTable;
 use crate::general::table_display::FileInfoTable;
 use crate::search::file::FileSearch;
 use crate::search::info::FileInfo;
-use crate::SearchOption;
 
 pub struct SearchCommand {
     option: SearchOption,

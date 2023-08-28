@@ -1,11 +1,11 @@
-mod ansi_support;
-mod commands;
-mod general;
-mod parsers;
-mod python;
-mod rust;
-mod search;
-mod utils;
+pub mod ansi_support;
+pub mod commands;
+pub mod general;
+pub mod parsers;
+pub mod python;
+pub mod rust;
+pub mod search;
+pub mod utils;
 
 use std::io;
 
@@ -18,7 +18,6 @@ use crate::commands::configuration::Cli;
 use crate::commands::configuration::Commands;
 use crate::commands::configuration::PythonSubCommands;
 use crate::commands::configuration::RustSubCommands;
-use crate::commands::configuration::SearchOption;
 
 use crate::commands::python::PythonCreateEnvCommand;
 use crate::commands::python::PythonDLCommand;

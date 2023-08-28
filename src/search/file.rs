@@ -134,6 +134,25 @@ impl FileSearch {
         search_progress.display_progress_finalize();
         files
     }
+
+    pub fn search_files_benchmark(&self) -> SearchProgress {
+        let mut files: HashSet<FileInfo> = HashSet::new();
+        let mut queue: LinkedList<PathBuf> = LinkedList::new();
+        let mut search_progress: SearchProgress = SearchProgress::new();
+
+        let root: Result<PathBuf, io::Error> = self.get_root_path();
+        if let Ok(root) = root {
+            search_progress.display_search_path(&root);
+            queue.push_back(root);
+
+            while let Some(current_dir) = queue.pop_front() {
+                self.walker(&current_dir, &mut files, &mut queue, &mut search_progress);
+            }
+        }
+
+        search_progress.display_progress_finalize();
+        search_progress
+    }
 }
 
 impl FileSearch {
