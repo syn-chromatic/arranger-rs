@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::structures::LinkedHashMap;
+
 use crate::general::path::WPath;
 use crate::search::info::FileInfo;
 use crate::utils::StringOp;
@@ -323,10 +325,12 @@ impl FileInfoTable {
 }
 
 pub struct DynamicTable {
+    scale: f32,
     width: usize,
     padding: usize,
     header: String,
-    parameters: Vec<(String, String)>,
+    header_background_color: Box<dyn ANSICode>,
+    parameters: LinkedHashMap<String, String>,
 }
 
 impl DynamicTable {
@@ -341,11 +345,31 @@ impl DynamicTable {
 
         let width: usize = (width as f32 * scale) as usize;
         let header: String = String::new();
-        let parameters: Vec<(String, String)> = Vec::new();
+        let header_background_color: Box<dyn ANSICode> = YellowBackgroundANSI.boxed();
+        let parameters: LinkedHashMap<String, String> = LinkedHashMap::new();
+
         DynamicTable {
+            scale,
             width,
             padding,
             header,
+            header_background_color,
+            parameters,
+        }
+    }
+
+    pub fn new_from_width(width: usize, padding: usize) -> DynamicTable {
+        let header: String = String::new();
+        let header_background_color: Box<dyn ANSICode> = YellowBackgroundANSI.boxed();
+        let parameters: LinkedHashMap<String, String> = LinkedHashMap::new();
+        let scale: f32 = 1.0;
+
+        DynamicTable {
+            scale,
+            width,
+            padding,
+            header,
+            header_background_color,
             parameters,
         }
     }
@@ -356,13 +380,47 @@ impl DynamicTable {
         self.header = header.to_string();
     }
 
+    pub fn set_header_background_color<T: ANSICode + 'static>(&mut self, ansi: T) {
+        self.header_background_color = ansi.boxed();
+    }
+
     pub fn add_parameter<T: fmt::Debug>(&mut self, attribute: &str, value: T) {
         let attribute: String = attribute.to_string();
         let value: String = format!("{:?}", value);
-        self.parameters.push((attribute, value));
+        self.parameters.insert(attribute, value);
     }
 
-    pub fn print(&mut self) {
+    pub fn add_parameter_string(&mut self, attribute: &str, value: &str) {
+        let attribute: String = attribute.to_string();
+        let value: String = value.to_string();
+        self.parameters.insert(attribute, value);
+    }
+
+    pub fn get_string(&self) -> String {
+        let (attr_width, value_width): (usize, usize) = self.compute_widths();
+        let width: usize = attr_width + value_width + 3;
+        let header: String = self.get_padded_header(width);
+        let header: String = self.get_header_ansi(&header);
+        let table: String = self.generate_table(attr_width, value_width);
+        let string: String = format!("{}\n{}", header, table);
+        string
+    }
+
+    pub fn get_header_string(&self) -> String {
+        let (attr_width, value_width): (usize, usize) = self.compute_widths();
+        let width: usize = attr_width + value_width + 3;
+        let header: String = self.get_padded_header(width);
+        let header: String = self.get_header_ansi(&header);
+        header
+    }
+
+    pub fn get_table_string(&self) -> String {
+        let (attr_width, value_width): (usize, usize) = self.compute_widths();
+        let table: String = self.generate_table(attr_width, value_width);
+        table
+    }
+
+    pub fn print(&self) {
         let (attr_width, value_width): (usize, usize) = self.compute_widths();
         let width: usize = attr_width + value_width + 3;
         let header: String = self.get_padded_header(width);
@@ -370,6 +428,13 @@ impl DynamicTable {
         let table: String = self.generate_table(attr_width, value_width);
         println!("{}", header);
         println!("{}", table);
+    }
+
+    pub fn update_terminal_width(&mut self) {
+        let size: Option<(usize, usize)> = term_size::dimensions();
+        if let Some((width, _)) = size {
+            self.width = (width as f32 * self.scale) as usize;
+        }
     }
 }
 
@@ -572,7 +637,7 @@ impl DynamicTable {
     }
 
     fn get_header_ansi(&self, header: &str) -> String {
-        let ansi: String = YellowBackgroundANSI.combine(&BlackANSI).value();
+        let ansi: String = self.header_background_color.combine(&BlackANSI).value();
         let reset_ansi: String = ResetANSI.value();
         let ansi_header: String = ansi + header + &reset_ansi;
         ansi_header

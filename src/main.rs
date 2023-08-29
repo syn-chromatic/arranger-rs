@@ -5,6 +5,7 @@ pub mod parsers;
 pub mod python;
 pub mod rust;
 pub mod search;
+pub mod structures;
 pub mod utils;
 
 use std::io;
@@ -12,7 +13,7 @@ use std::io;
 use clap::error::Error as ClapError;
 use clap::Parser;
 
-use crate::ansi_support::lib::AnsiSupport;
+use crate::ansi_support::AnsiSupport;
 
 use crate::commands::configuration::Cli;
 use crate::commands::configuration::Commands;
