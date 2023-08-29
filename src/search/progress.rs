@@ -20,7 +20,7 @@ pub struct SearchProgress {
 
 impl SearchProgress {
     pub fn new() -> Self {
-        let table: DynamicTable = DynamicTable::new(0.5, 1);
+        let table: DynamicTable = DynamicTable::new(0.8, 1);
         let writer: ConsoleWriter = ConsoleWriter::new();
         let search_counter: usize = 0;
         let match_counter: usize = 0;
@@ -53,7 +53,7 @@ impl SearchProgress {
     }
 
     pub fn display_progress(&mut self) {
-        if self.search_counter % 1000 == 0 {
+        if self.search_counter % 500 == 0 {
             self.table.update_terminal_width();
             self.write_progress();
         }
@@ -65,7 +65,7 @@ impl SearchProgress {
     }
 
     pub fn set_search_path(&mut self, path: &PathBuf) {
-        let path_string: String = self.get_path_string(&path);
+        let path_string = self.get_path_string(&path);
         self.table.add_parameter_string("Path", &path_string);
     }
 

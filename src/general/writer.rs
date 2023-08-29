@@ -16,38 +16,32 @@ impl Console {
     }
 
     pub fn hide_cursor(&self) {
-        let buffer: &[u8] = "\x1B[?25l".as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[?25l");
         let _ = io::stdout().flush();
     }
 
     pub fn show_cursor(&self) {
-        let buffer: &[u8] = "\x1B[?25h".as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[?25h");
         let _ = io::stdout().flush();
     }
 
     pub fn blink_cursor_on(&self) {
-        let buffer: &[u8] = "\x1B[?12h".as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[?12h");
         let _ = io::stdout().flush();
     }
 
     pub fn blink_cursor_off(&self) {
-        let buffer: &[u8] = "\x1B[?12l".as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[?12l");
         let _ = io::stdout().flush();
     }
 
     pub fn enable_line_wrapping(&self) {
-        let buffer: &[u8] = "\x1B[?7h".as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[?7h");
         let _ = io::stdout().flush();
     }
 
     pub fn disable_line_wrapping(&self) {
-        let buffer: &[u8] = "\x1B[?7l".as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[?7l");
         let _ = io::stdout().flush();
     }
 
@@ -66,14 +60,12 @@ impl Console {
 
     pub fn clear_right_of(&mut self, column: usize, row: usize) {
         self.move_to(column, row);
-        let buffer: &[u8] = "\x1B[0K".as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[0K");
     }
 
     pub fn clear_row(&mut self, row: usize) {
         self.move_to(0, row);
-        let buffer: &[u8] = "\x1B[2K".as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[2K");
     }
 
     pub fn move_cursor_up(&mut self, n: usize) {
@@ -82,9 +74,7 @@ impl Console {
         } else {
             self.cursor_row -= n;
         }
-        let ansi_code: String = format!("\x1B[{}A", n);
-        let buffer: &[u8] = ansi_code.as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[{}A", n);
     }
 
     pub fn move_cursor_down(&mut self, n: usize) {
@@ -92,13 +82,10 @@ impl Console {
         if self.cursor_row > self.max_row {
             self.max_row = self.cursor_row;
             for _ in 0..n {
-                let buffer: &[u8] = "\n".as_bytes();
-                let _ = io::stdout().write(buffer);
+                println!();
             }
         } else {
-            let ansi_code: String = format!("\x1B[{}B", n);
-            let buffer: &[u8] = ansi_code.as_bytes();
-            let _ = io::stdout().write(buffer);
+            print!("\x1B[{}B", n);
         }
     }
 
@@ -111,9 +98,7 @@ impl Console {
             self.move_cursor_up(cursor_move);
         }
 
-        let ansi_code: String = format!("\x1B[{}G", column + 1);
-        let buffer: &[u8] = ansi_code.as_bytes();
-        let _ = io::stdout().write(buffer);
+        print!("\x1B[{}G", column + 1);
     }
 
     pub fn move_to_new_row(&mut self) {
@@ -189,7 +174,6 @@ impl ConsoleWriter {
             self.console.move_to(column, row);
             self.console.write_character(character);
         }
-        io::stdout().flush().unwrap();
     }
 
     fn write_row(&mut self, segment: &str, row: usize) {
@@ -220,8 +204,8 @@ impl ConsoleWriter {
     }
 
     pub fn write(&mut self, string: &str) {
-        self.console.disable_line_wrapping();
         self.write_to_console(string);
+        let _ = io::stdout().flush();
     }
 
     pub fn clear_all(&mut self) {
