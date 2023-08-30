@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use crate::general::terminal::RedANSI;
-use crate::general::terminal::Terminal;
+use crate::terminal::RedANSI;
+use crate::terminal::Terminal;
 
 use crate::commands::configuration::SearchOption;
 use crate::commands::configuration::SearchSort;

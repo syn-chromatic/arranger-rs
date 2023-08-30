@@ -12,8 +12,8 @@ use crate::python::python::PythonEnvironment;
 use crate::search::file::FileSearch;
 use crate::search::info::FileInfo;
 
-use crate::general::terminal::Terminal;
-use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
+use crate::terminal::Terminal;
+use crate::terminal::{CyanANSI, GreenANSI, RedANSI};
 
 use crate::utils::ConfirmationPrompt;
 

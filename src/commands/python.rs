@@ -7,8 +7,8 @@ use std::str::SplitWhitespace;
 
 use dirs;
 
-use crate::general::terminal::Terminal;
-use crate::general::terminal::{GreenANSI, RedANSI, YellowANSI};
+use crate::terminal::Terminal;
+use crate::terminal::{GreenANSI, RedANSI, YellowANSI};
 
 use crate::commands::configuration::FixVirtualEnvOption;
 use crate::commands::configuration::PackagesOption;

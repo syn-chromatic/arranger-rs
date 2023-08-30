@@ -11,8 +11,8 @@ use crate::general::shell::{CommandExecute, CommandResponse};
 use crate::general::version::SemanticVersion;
 use crate::python::python::PythonEnvironment;
 
-use crate::general::terminal::RedANSI;
-use crate::general::terminal::Terminal;
+use crate::terminal::RedANSI;
+use crate::terminal::Terminal;
 
 #[derive(Clone)]
 pub struct Pip {

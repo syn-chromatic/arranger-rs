@@ -1,8 +1,8 @@
 use crate::commands::configuration::RustVSCodeTasksOption;
 use crate::rust::tasks::RustVSCodeTask;
 
-use crate::general::terminal::CyanANSI;
-use crate::general::terminal::Terminal;
+use crate::terminal::CyanANSI;
+use crate::terminal::Terminal;
 
 pub struct RustVSCodeTaskCommand {
     option: RustVSCodeTasksOption,

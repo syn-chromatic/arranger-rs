@@ -6,9 +6,9 @@ use crate::general::path::WPath;
 use crate::search::info::FileInfo;
 use crate::utils::StringOp;
 
-use crate::general::terminal::ANSICode;
-use crate::general::terminal::Terminal;
-use crate::general::terminal::{BlackANSI, CombinedANSI, ResetANSI, YellowBackgroundANSI};
+use crate::terminal::ANSICode;
+use crate::terminal::Terminal;
+use crate::terminal::{BlackANSI, CombinedANSI, ResetANSI, YellowBackgroundANSI};
 
 enum TableCharacter {
     TopRight,

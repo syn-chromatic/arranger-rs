@@ -6,7 +6,7 @@ use crate::search::formatters::format_size;
 use crate::search::formatters::format_time;
 
 use crate::general::table_display::DynamicTable;
-use crate::general::writer::ConsoleWriter;
+use crate::terminal::ConsoleWriter;
 
 pub struct SearchProgress {
     table: DynamicTable,

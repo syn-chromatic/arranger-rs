@@ -1,17 +1,20 @@
 pub mod ansi_support;
 pub mod commands;
 pub mod general;
+pub mod interrupt_handler;
 pub mod parsers;
 pub mod python;
 pub mod rust;
 pub mod search;
 pub mod structures;
+pub mod terminal;
 pub mod utils;
 
 use std::io;
 
 use clap::error::Error as ClapError;
 use clap::Parser;
+use tokio::runtime::Runtime;
 
 use crate::ansi_support::AnsiSupport;
 
@@ -30,8 +33,21 @@ use crate::commands::search::SearchCommand;
 
 use crate::utils::OptionsPrinter;
 
-#[tokio::main]
-async fn main() {
+use crate::interrupt_handler::InterruptHandler;
+use crate::terminal::{ANSICode, CursorOnANSI, LineWrapOnANSI, ResetANSI};
+
+fn main() {
+    let handler: InterruptHandler<_, _> =
+        InterruptHandler::new(main_async_runtime, on_program_finish);
+    handler.run();
+}
+
+fn main_async_runtime() {
+    let runtime: Runtime = Runtime::new().unwrap();
+    runtime.block_on(main_program());
+}
+
+async fn main_program() {
     let ansi_support: Result<(), io::Error> = AnsiSupport::enable();
 
     if let Err(_) = ansi_support {
@@ -80,4 +96,11 @@ async fn main() {
             options_printer.print(&opt_string);
         }
     }
+}
+
+fn on_program_finish() {
+    let reset_ansi: String = ResetANSI.value();
+    let cursor_ansi: String = CursorOnANSI.value();
+    let line_wrap_ansi: String = LineWrapOnANSI.value();
+    print!("{}{}{}", reset_ansi, cursor_ansi, line_wrap_ansi);
 }

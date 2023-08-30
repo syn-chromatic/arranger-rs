@@ -5,8 +5,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::general::path::WPath;
-use crate::general::terminal::Terminal;
-use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
+use crate::terminal::Terminal;
+use crate::terminal::{CyanANSI, GreenANSI, RedANSI};
 
 #[derive(Serialize)]
 struct TaskGroup {

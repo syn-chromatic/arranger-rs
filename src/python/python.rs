@@ -1,8 +1,8 @@
 use crate::general::path::WPath;
-use crate::general::terminal::RedANSI;
-use crate::general::terminal::Terminal;
 use crate::general::version::SemanticVersion;
 use crate::python::pip::Pip;
+use crate::terminal::RedANSI;
+use crate::terminal::Terminal;
 
 #[derive(Clone)]
 pub struct PythonEnvironment {

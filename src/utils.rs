@@ -1,9 +1,9 @@
 use std::io;
 use std::str::Lines;
 
-use crate::general::terminal::Terminal;
-use crate::general::terminal::{CyanANSI, GreenANSI, RedANSI};
-use crate::general::terminal::{WhiteANSI, YellowANSI};
+use crate::terminal::Terminal;
+use crate::terminal::{CyanANSI, GreenANSI, RedANSI};
+use crate::terminal::{WhiteANSI, YellowANSI};
 
 pub struct ConfirmationPrompt;
 

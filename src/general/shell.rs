@@ -9,8 +9,8 @@ use std::string::FromUtf8Error;
 use std::thread;
 
 use crate::general::path::WPath;
-use crate::general::terminal::Terminal;
-use crate::general::terminal::{GreenANSI, RedANSI, YellowANSI};
+use crate::terminal::Terminal;
+use crate::terminal::{GreenANSI, RedANSI, YellowANSI};
 
 pub struct CommandResponse {
     stdout: String,

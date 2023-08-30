@@ -6,8 +6,8 @@ use std::io;
 use regex::Regex;
 
 use crate::general::https::HTTPS;
-use crate::general::terminal::Terminal;
-use crate::general::terminal::YellowANSI;
+use crate::terminal::Terminal;
+use crate::terminal::YellowANSI;
 use crate::general::version::{PreRelease, SemanticVersion};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
