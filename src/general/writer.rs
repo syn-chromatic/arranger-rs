@@ -184,13 +184,22 @@ impl ConsoleWriter {
     }
 
     fn write_to_console(&mut self, string: &str) {
-        self.console.hide_cursor();
         let mut lines: usize = 0;
         for (idx, segment) in string.lines().enumerate() {
             self.write_row(segment, idx);
             lines += 1;
         }
         self.clear_remaining_lines(lines);
+    }
+
+    fn setup_console_configuration(&self) {
+        self.console.disable_line_wrapping();
+        self.console.hide_cursor();
+    }
+
+    fn reset_console_configuration(&self) {
+        self.console.enable_line_wrapping();
+        self.console.show_cursor();
     }
 }
 
@@ -199,12 +208,13 @@ impl ConsoleWriter {
         let console: Console = Console::new();
         let row_data: Vec<(String, usize)> = Vec::new();
 
-        console.disable_line_wrapping();
         ConsoleWriter { console, row_data }
     }
 
     pub fn write(&mut self, string: &str) {
+        self.setup_console_configuration();
         self.write_to_console(string);
+        self.reset_console_configuration();
         let _ = io::stdout().flush();
     }
 
