@@ -191,16 +191,6 @@ impl ConsoleWriter {
         }
         self.clear_remaining_lines(lines);
     }
-
-    fn setup_console_configuration(&self) {
-        self.console.disable_line_wrapping();
-        self.console.hide_cursor();
-    }
-
-    fn reset_console_configuration(&self) {
-        self.console.enable_line_wrapping();
-        self.console.show_cursor();
-    }
 }
 
 impl ConsoleWriter {
@@ -211,10 +201,18 @@ impl ConsoleWriter {
         ConsoleWriter { console, row_data }
     }
 
+    pub fn setup_console_configuration(&self) {
+        self.console.disable_line_wrapping();
+        self.console.hide_cursor();
+    }
+
+    pub fn reset_console_configuration(&self) {
+        self.console.enable_line_wrapping();
+        self.console.show_cursor();
+    }
+
     pub fn write(&mut self, string: &str) {
-        self.setup_console_configuration();
         self.write_to_console(string);
-        self.reset_console_configuration();
         let _ = io::stdout().flush();
     }
 

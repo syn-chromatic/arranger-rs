@@ -28,6 +28,8 @@ impl SearchProgress {
         let time: Instant = Instant::now();
         let elapsed_time_ns: u128 = 0;
 
+        writer.setup_console_configuration();
+
         SearchProgress {
             table,
             writer,
@@ -61,6 +63,7 @@ impl SearchProgress {
 
     pub fn display_progress_finalize(&mut self) {
         self.write_progress();
+        self.writer.reset_console_configuration();
         println!();
     }
 
