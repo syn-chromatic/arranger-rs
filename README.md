@@ -166,4 +166,5 @@ ___
 
 ___
 ### `➢` Example
-![arranger](https://github.com/syn-chromatic/arranger-rs/assets/68112904/e581e0f7-2921-475b-a123-f52251bdbd65)
+![arranger-rs-example](https://github.com/syn-chromatic/arranger-rs/assets/68112904/939543cf-197b-4d3b-b2db-6c473855dd2c)
+
