@@ -1,16 +1,36 @@
+use std::io;
+use std::io::Write;
+
 use arranger::search::file::FileSearch;
 use arranger::search::formatters::format_time;
 use arranger::search::progress::SearchProgress;
 
 #[test]
-pub fn search_benchmark() {
-    search_nonexistent_benchmark(5);
-    search_standard_benchmark(5);
-    search_regex_benchmark(5);
+fn search_benchmark() {
+    println!("1. Benchmark [Capture None]");
+    println!("2. Benchmark [Capture All]");
+    println!("3. Benchmark Simple Regex Pattern [Capture All]");
+    println!("4. Benchmark Complex Regex Pattern [Capture All]");
+
+    print!("\nEnter Value: ");
+    io::stdout().flush().unwrap();
+
+    let mut choice: String = String::new();
+    io::stdin()
+        .read_line(&mut choice)
+        .expect("Failed to read line");
+
+    match choice.trim().parse() {
+        Ok(1) => search_no_capture(5),
+        Ok(2) => search_capture_all(5),
+        Ok(3) => search_regex_capture_all(5),
+        Ok(4) => search_regex_complex_capture_all(5),
+        _ => println!("Invalid choice"),
+    }
 }
 
-pub fn search_nonexistent_benchmark(iterations: usize) {
-    println!("[Benchmarking Search 1]");
+fn search_no_capture(iterations: usize) {
+    println!("[Benchmarking Capture None]");
     let mut file_search: FileSearch = FileSearch::new();
     file_search.set_root("./benches/search_benchmark/benchmark_files");
     file_search.set_exclusive_filename("file_500001.txt");
@@ -28,8 +48,8 @@ pub fn search_nonexistent_benchmark(iterations: usize) {
     println!();
 }
 
-pub fn search_standard_benchmark(iterations: usize) {
-    println!("[Benchmarking Search 2]");
+fn search_capture_all(iterations: usize) {
+    println!("[Benchmarking Capture All]");
     let mut file_search: FileSearch = FileSearch::new();
     file_search.set_root("./benches/search_benchmark/benchmark_files");
     file_search.set_exclusive_filename("file_");
@@ -48,11 +68,42 @@ pub fn search_standard_benchmark(iterations: usize) {
     println!();
 }
 
-pub fn search_regex_benchmark(iterations: usize) {
-    println!("[Benchmarking Search Regex]");
+fn search_regex_capture_all(iterations: usize) {
+    println!("[Benchmarking Simple Regex Pattern Capture All]");
     let mut file_search: FileSearch = FileSearch::new();
     file_search.set_root("./benches/search_benchmark/benchmark_files");
     let _ = file_search.set_exclusive_filename_regex(".*");
+
+    let mut total_time: u128 = 0;
+    for _ in 0..iterations {
+        let progress: SearchProgress = file_search.search_files_benchmark();
+        let elapsed_time: u128 = progress.get_elapsed_time_ns();
+        total_time += elapsed_time;
+    }
+
+    let average_time: u128 = total_time / iterations as u128;
+    let average_time_string: String = format_time(average_time);
+    println!("Average Time: {}", average_time_string);
+    println!();
+}
+
+fn search_regex_complex_capture_all(iterations: usize) {
+    println!("[Benchmarking Complex Regex Pattern Capture All]");
+    let mut file_search: FileSearch = FileSearch::new();
+    file_search.set_root("./benches/search_benchmark/benchmark_files");
+
+    let complex_pattern: String = "^file_(".to_string()
+        + "([1-9])|"
+        + "([1-9][0-9])|"
+        + "([1-9][0-9]{2})|"
+        + "([1-9][0-9]{3})|"
+        + "([1-9][0-9]{4})|"
+        + "(1[0-9]{5}|2[0-9]{5}|3[0-9]{5})|"
+        + "4([0-8][0-9]{4}|9[0-9]{3})|"
+        + "(500000)"
+        + ").*";
+
+    let _ = file_search.set_exclusive_filename_regex(&complex_pattern);
 
     let mut total_time: u128 = 0;
     for _ in 0..iterations {
