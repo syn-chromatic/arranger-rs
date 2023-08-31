@@ -37,12 +37,11 @@ use crate::interrupt_handler::InterruptHandler;
 use crate::terminal::{ANSICode, CursorOnANSI, LineWrapOnANSI, ResetANSI};
 
 fn main() {
-    let handler: InterruptHandler<_, _> =
-        InterruptHandler::new(main_async_runtime, on_program_finish);
+    let handler: InterruptHandler<_, _> = InterruptHandler::new(main_runtime, interrupt);
     handler.run();
 }
 
-fn main_async_runtime() {
+fn main_runtime() {
     let runtime: Runtime = Runtime::new().unwrap();
     runtime.block_on(main_program());
 }
@@ -98,7 +97,7 @@ async fn main_program() {
     }
 }
 
-fn on_program_finish() {
+fn interrupt() {
     let reset_ansi: String = ResetANSI.value();
     let cursor_ansi: String = CursorOnANSI.value();
     let line_wrap_ansi: String = LineWrapOnANSI.value();

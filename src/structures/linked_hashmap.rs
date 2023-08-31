@@ -150,7 +150,7 @@ impl<K, V, S> LinkedHashMap<K, V, S> {
         let mut cur = (*self.head).next;
         while cur != self.head {
             let next = (*cur).next;
-            Box::from_raw(cur);
+            let _ = Box::from_raw(cur);
             cur = next;
         }
     }
@@ -1285,7 +1285,7 @@ impl<K, V> Drop for IntoIter<K, V> {
         for _ in 0..self.remaining {
             unsafe {
                 let next = (*self.tail).next;
-                Box::from_raw(self.tail);
+                let _ = Box::from_raw(self.tail);
                 self.tail = next;
             }
         }

@@ -41,11 +41,13 @@ where
         loop {
             thread::sleep(Duration::from_millis(100));
 
-            if !RUNNING.load(Ordering::SeqCst) || main_handle.is_finished() {
+            if !RUNNING.load(Ordering::SeqCst) {
                 drop(main_handle); // From testing this seems to work without issues... ¯\_(ツ)_/¯
+                (self.interrupt)();
+                break;
+            } else if main_handle.is_finished() {
                 break;
             }
         }
-        (self.interrupt)();
     }
 }
