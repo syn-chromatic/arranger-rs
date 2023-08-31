@@ -148,8 +148,9 @@ ___
     # Search for file by name with specific extension
     arranger search -F some_file -E zip
 
-    # Search for any file with multiple extensions
-    arranger search -E zip -E rar -E tar
+    # Search for any file with multiple extensions 
+    # (-F "") or (-F ".*") combined with -R, enables regex that captures all files
+    arranger search -F "" -R -E zip -E rar -E tar
 
     # Search for file with regex
     arranger search -F .*some$ -R
