@@ -12,7 +12,7 @@ pub fn search_benchmark() {
 pub fn search_nonexistent_benchmark(iterations: usize) {
     println!("[Benchmarking Search 1]");
     let mut file_search: FileSearch = FileSearch::new();
-    file_search.set_root("./tests/benchmark_files");
+    file_search.set_root("./benches/search_benchmark/benchmark_files");
     file_search.set_exclusive_filename("file_500001.txt");
 
     let mut total_time: u128 = 0;
@@ -31,7 +31,7 @@ pub fn search_nonexistent_benchmark(iterations: usize) {
 pub fn search_standard_benchmark(iterations: usize) {
     println!("[Benchmarking Search 2]");
     let mut file_search: FileSearch = FileSearch::new();
-    file_search.set_root("./tests/benchmark_files");
+    file_search.set_root("./benches/search_benchmark/benchmark_files");
     file_search.set_exclusive_filename("file_");
     file_search.set_exclusive_extensions(["txt"]);
 
@@ -51,7 +51,7 @@ pub fn search_standard_benchmark(iterations: usize) {
 pub fn search_regex_benchmark(iterations: usize) {
     println!("[Benchmarking Search Regex]");
     let mut file_search: FileSearch = FileSearch::new();
-    file_search.set_root("./tests/benchmark_files");
+    file_search.set_root("./benches/search_benchmark/benchmark_files");
     let _ = file_search.set_exclusive_filename_regex(".*");
 
     let mut total_time: u128 = 0;
