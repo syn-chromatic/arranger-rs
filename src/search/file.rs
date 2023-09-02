@@ -293,22 +293,19 @@ impl FileSearch {
         files: &mut HashSet<FileInfo>,
         sub_directories: &mut LinkedList<PathBuf>,
         search_progress: &mut SearchProgress,
-    ) {
+    ) -> bool {
         if let Ok(metadata) = entry.metadata() {
             search_progress.display_progress();
             let path: PathBuf = entry.path();
 
-            if metadata.is_file() {
+            if metadata.is_dir() {
+                sub_directories.push_back(path);
+            } else if metadata.is_file() {
                 let is_match: bool = self.handle_file(metadata, path, files, search_progress);
-                if is_match && self.quit_directory_on_match {
-                    return;
-                }
-            } else if metadata.is_dir() {
-                if !metadata.is_symlink() {
-                    sub_directories.push_back(path);
-                }
+                return is_match;
             }
         }
+        false
     }
 
     fn walker(
@@ -331,7 +328,11 @@ impl FileSearch {
 
         for entry in entries {
             if let Ok(entry) = entry.as_ref() {
-                self.handle_entry(entry, files, &mut sub_directories, search_progress);
+                let is_match: bool =
+                    self.handle_entry(entry, files, &mut sub_directories, search_progress);
+                if is_match && self.quit_directory_on_match {
+                    return;
+                }
             }
         }
 
