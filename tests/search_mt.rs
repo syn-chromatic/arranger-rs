@@ -1,14 +1,13 @@
 use std::collections::HashSet;
 use std::collections::LinkedList;
 use std::env;
-
 use std::fs::DirEntry;
 use std::fs::{Metadata, ReadDir};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{mpsc, Arc, Mutex, MutexGuard};
+use std::sync::{mpsc, Arc};
 use std::thread;
+use std::time::Duration;
 
 use arranger::search::info::FileInfo;
 use arranger::search::progress::SearchProgress;
@@ -77,14 +76,15 @@ impl FileSearch {
             Err(_) => return,
         };
 
-        // entries.
-
         let mut queue: LinkedList<PathBuf> = LinkedList::new();
 
+        let mut counter = 0;
         for entry in entries {
             if let Ok(entry) = entry.as_ref() {
                 self.handle_entry(entry, &mut queue);
             }
+            // print!("Running Thread: {}\r", counter);
+            counter += 1;
         }
 
         let _ = sender.send(queue);
@@ -140,50 +140,45 @@ impl FileSearch {
 //     }
 // }
 
-pub struct MultithreadFileSearch {
+pub struct ThreadedWalker {
     file_search: Arc<FileSearch>,
     max_threads: usize,
 }
 
-impl MultithreadFileSearch {
-    pub fn new() -> Self {
+impl ThreadedWalker {
+    pub fn new(max_threads: usize) -> Self {
         let mut file_search: FileSearch = FileSearch::new();
         file_search.set_root("C:/");
         let file_search: Arc<FileSearch> = Arc::new(file_search);
-        let max_threads: usize = 128;
 
-        MultithreadFileSearch {
+        ThreadedWalker {
             file_search,
             max_threads,
         }
     }
 
-    pub fn search_files<'a>(&'a self) {
-        let root: PathBuf = self.file_search.get_root_path().unwrap();
-
-        self.spawn_walker(root);
-    }
-
     fn wait_for_threads(
         &self,
-        rx: &mpsc::Receiver<LinkedList<PathBuf>>,
-        thread_handles: &mut Vec<std::thread::JoinHandle<()>>,
+        thread_handles: &mut Vec<thread::JoinHandle<()>>,
         queue: &mut LinkedList<PathBuf>,
+        rx: &mpsc::Receiver<LinkedList<PathBuf>>,
     ) {
         loop {
             if thread_handles.len() < self.max_threads {
                 break;
             }
 
-            if let Ok(received) = rx.recv_timeout(std::time::Duration::from_millis(100)) {
+            thread_handles.retain(|x| !x.is_finished());
+
+            if let Ok(received) = rx.try_recv() {
                 queue.extend(received);
             }
 
-            thread_handles.retain(|x| !x.is_finished());
+            thread::sleep(Duration::from_millis(1));
         }
     }
 
-    fn update_thread_handles(&self, thread_handles: &mut Vec<std::thread::JoinHandle<()>>) {
+    fn update_thread_handles(&self, thread_handles: &mut Vec<thread::JoinHandle<()>>) {
         thread_handles.retain(|x| !x.is_finished());
     }
 
@@ -211,7 +206,7 @@ impl MultithreadFileSearch {
         ) = mpsc::channel();
 
         let mut queue: LinkedList<PathBuf> = LinkedList::new();
-        let mut thread_handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
+        let mut thread_handles: Vec<thread::JoinHandle<()>> = Vec::new();
         queue.push_back(root);
 
         self.update_queue_first_pass(&mut queue, &tx, &rx);
@@ -221,9 +216,9 @@ impl MultithreadFileSearch {
             let shared_self: Arc<FileSearch> = self.file_search.clone();
 
             self.update_thread_handles(&mut thread_handles);
-
+            self.print_active_threads(&thread_handles, &queue);
             if thread_handles.len() >= self.max_threads {
-                self.wait_for_threads(&rx, &mut thread_handles, &mut queue);
+                self.wait_for_threads(&mut thread_handles, &mut queue, &rx);
             }
 
             let handle: thread::JoinHandle<()> = thread::spawn(move || {
@@ -232,8 +227,7 @@ impl MultithreadFileSearch {
 
             thread_handles.push(handle);
 
-            self.print_active_threads(&thread_handles, &queue);
-            if let Ok(received) = rx.recv_timeout(std::time::Duration::from_micros(1)) {
+            while let Ok(received) = rx.try_recv() {
                 queue.extend(received);
             }
         }
@@ -241,19 +235,40 @@ impl MultithreadFileSearch {
 
     fn print_active_threads(
         &self,
-        thread_handles: &Vec<std::thread::JoinHandle<()>>,
+        thread_handles: &Vec<thread::JoinHandle<()>>,
         queue: &LinkedList<PathBuf>,
     ) {
         print!(
-            "Active Threads: {} | Queue: {}  |\r",
+            "Active Threads: {} | Queue: {} |   \r",
             thread_handles.len(),
             queue.len(),
         );
     }
 }
 
+struct ThreadedSearch {
+    walker: Arc<ThreadedWalker>,
+}
+
+impl ThreadedSearch {
+    pub fn new(max_threads: usize) -> Self {
+        let walker: ThreadedWalker = ThreadedWalker::new(max_threads);
+        let walker: Arc<ThreadedWalker> = Arc::new(walker);
+        ThreadedSearch { walker }
+    }
+
+    pub fn search_files<'a>(&'a self) {
+        let walker: Arc<ThreadedWalker> = self.walker.clone();
+        let handle: thread::JoinHandle<()> = thread::spawn(move || {
+            let root: PathBuf = walker.file_search.get_root_path().unwrap();
+            walker.spawn_walker(root);
+        });
+        let _ = handle.join();
+    }
+}
+
 #[test]
 fn test_multithread() {
-    let multithread_search: MultithreadFileSearch = MultithreadFileSearch::new();
-    let _ = multithread_search.search_files();
+    let threaded_search: ThreadedSearch = ThreadedSearch::new(128);
+    let _ = threaded_search.search_files();
 }
