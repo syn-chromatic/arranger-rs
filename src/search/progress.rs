@@ -63,6 +63,7 @@ impl SearchProgress {
 
     pub fn display_progress_finalize(&mut self) {
         self.write_progress();
+        self.writer.end();
         self.writer.reset_console_configuration();
         println!();
     }
