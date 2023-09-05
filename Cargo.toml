@@ -32,6 +32,9 @@ windows-sys = { version = "0.48.0", features = [
 ] }
 
 
+[profile.dev]
+opt-level = 3
+
 [profile.release]
 opt-level = 3
 strip = true
