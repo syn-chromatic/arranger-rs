@@ -28,7 +28,7 @@ impl RwUsize {
         match self.value.write() {
             Ok(mut write_guard) => {
                 if *write_guard == 0 {
-                    return Err("Thread count is already 0");
+                    return Err("Value is already 0");
                 }
                 *write_guard -= 1;
                 Ok(())
@@ -54,49 +54,6 @@ impl RwUsize {
         }
     }
 }
-
-// pub struct AtomicUsize {
-//     value: AtomicUsize,
-// }
-
-// impl AtomicCounter {
-//     pub fn new(value: usize) -> Self {
-//         let value: AtomicUsize = AtomicUsize::new(value);
-//         AtomicCounter { value }
-//     }
-
-//     pub fn add_sequential(&self, value: usize) {
-//         self.value.fetch_add(value, Ordering::SeqCst);
-//     }
-
-//     pub fn sub_sequential(&self, value: usize) {
-//         self.value.fetch_sub(value, Ordering::SeqCst);
-//     }
-
-//     pub fn add_relaxed(&self, value: usize) {
-//         self.value.fetch_add(value, Ordering::Relaxed);
-//     }
-
-//     pub fn sub_relaxed(&self, value: usize) {
-//         self.value.fetch_sub(value, Ordering::Relaxed);
-//     }
-
-//     pub fn load_sequential(&self) -> usize {
-//         self.value.load(Ordering::SeqCst)
-//     }
-
-//     pub fn load_relaxed(&self) -> usize {
-//         self.value.load(Ordering::Relaxed)
-//     }
-
-//     pub fn store_value_sequential(&self, value: usize) {
-//         self.value.store(value, Ordering::SeqCst);
-//     }
-
-//     pub fn store_value_relaxed(&self, value: usize) {
-//         self.value.store(value, Ordering::Relaxed);
-//     }
-// }
 
 pub struct QueueChannel {
     sender: Arc<Mutex<mpsc::Sender<LinkedList<PathBuf>>>>,

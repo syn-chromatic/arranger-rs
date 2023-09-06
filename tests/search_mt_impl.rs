@@ -6,7 +6,7 @@ use std::fs::{Metadata, ReadDir};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -303,7 +303,7 @@ impl SearchThreadManager {
 fn test_multithread() {
     println!("\n\n");
     let mut file_search = FileSearch::new();
-    file_search.set_root("C:/");
+    file_search.set_root("E:/");
 
     let max_threads: usize = 12;
     let batch_size: usize = 500;
