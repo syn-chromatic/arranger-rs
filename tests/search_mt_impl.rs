@@ -170,7 +170,7 @@ impl SearchThreadManager {
     }
 
     fn spawn_walkers(&self, queue: &mut LinkedList<PathBuf>) {
-        self.display_progress_loop();
+        self.display_progress_thread();
 
         loop {
             let batch: Vec<PathBuf> = self.get_queue_batch(queue);
@@ -179,8 +179,6 @@ impl SearchThreadManager {
             let active_threads: usize = self.active_threads.load(Ordering::SeqCst);
             let receive_buffer: usize = self.queue_channel.get_receive_buffer();
             self.set_progress_metrics(active_threads, receive_buffer, queue);
-            // self.search_progress.display_progress();
-            // self.print_activity(&queue, active_threads, receive_buffer);
 
             for _ in 0..receive_buffer {
                 if let Ok(received) = self.queue_channel.recv() {
@@ -198,7 +196,7 @@ impl SearchThreadManager {
         }
     }
 
-    fn display_progress_loop(&self) {
+    fn display_progress_thread(&self) {
         let search_progress: Arc<SearchMetricsThreaded> = self.search_progress.clone();
         let halt: Arc<AtomicBool> = self.halt.clone();
 
@@ -303,7 +301,7 @@ impl SearchThreadManager {
 fn test_multithread() {
     println!("\n\n");
     let mut file_search = FileSearch::new();
-    file_search.set_root("E:/");
+    file_search.set_root("C:/");
 
     let max_threads: usize = 12;
     let batch_size: usize = 500;
