@@ -55,54 +55,54 @@ impl RwUsize {
     }
 }
 
-pub struct AtomicCounter {
-    value: AtomicUsize,
-}
+// pub struct AtomicUsize {
+//     value: AtomicUsize,
+// }
 
-impl AtomicCounter {
-    pub fn new(value: usize) -> Self {
-        let value: AtomicUsize = AtomicUsize::new(value);
-        AtomicCounter { value }
-    }
+// impl AtomicCounter {
+//     pub fn new(value: usize) -> Self {
+//         let value: AtomicUsize = AtomicUsize::new(value);
+//         AtomicCounter { value }
+//     }
 
-    pub fn add_sequential(&self, value: usize) {
-        self.value.fetch_add(value, Ordering::SeqCst);
-    }
+//     pub fn add_sequential(&self, value: usize) {
+//         self.value.fetch_add(value, Ordering::SeqCst);
+//     }
 
-    pub fn sub_sequential(&self, value: usize) {
-        self.value.fetch_sub(value, Ordering::SeqCst);
-    }
+//     pub fn sub_sequential(&self, value: usize) {
+//         self.value.fetch_sub(value, Ordering::SeqCst);
+//     }
 
-    pub fn add_relaxed(&self, value: usize) {
-        self.value.fetch_add(value, Ordering::Relaxed);
-    }
+//     pub fn add_relaxed(&self, value: usize) {
+//         self.value.fetch_add(value, Ordering::Relaxed);
+//     }
 
-    pub fn sub_relaxed(&self, value: usize) {
-        self.value.fetch_sub(value, Ordering::Relaxed);
-    }
+//     pub fn sub_relaxed(&self, value: usize) {
+//         self.value.fetch_sub(value, Ordering::Relaxed);
+//     }
 
-    pub fn load_sequential(&self) -> usize {
-        self.value.load(Ordering::SeqCst)
-    }
+//     pub fn load_sequential(&self) -> usize {
+//         self.value.load(Ordering::SeqCst)
+//     }
 
-    pub fn load_relaxed(&self) -> usize {
-        self.value.load(Ordering::Relaxed)
-    }
+//     pub fn load_relaxed(&self) -> usize {
+//         self.value.load(Ordering::Relaxed)
+//     }
 
-    pub fn store_value_sequential(&self, value: usize) {
-        self.value.store(value, Ordering::SeqCst);
-    }
+//     pub fn store_value_sequential(&self, value: usize) {
+//         self.value.store(value, Ordering::SeqCst);
+//     }
 
-    pub fn store_value_relaxed(&self, value: usize) {
-        self.value.store(value, Ordering::Relaxed);
-    }
-}
+//     pub fn store_value_relaxed(&self, value: usize) {
+//         self.value.store(value, Ordering::Relaxed);
+//     }
+// }
 
 pub struct QueueChannel {
     sender: Arc<Mutex<mpsc::Sender<LinkedList<PathBuf>>>>,
     receiver: Arc<Mutex<mpsc::Receiver<LinkedList<PathBuf>>>>,
-    send_buffer: AtomicCounter,
-    receive_buffer: AtomicCounter,
+    send_buffer: AtomicUsize,
+    receive_buffer: AtomicUsize,
 }
 
 impl QueueChannel {
@@ -119,8 +119,8 @@ impl QueueChannel {
         QueueChannel {
             sender,
             receiver,
-            send_buffer: AtomicCounter::new(0),
-            receive_buffer: AtomicCounter::new(0),
+            send_buffer: AtomicUsize::new(0),
+            receive_buffer: AtomicUsize::new(0),
         }
     }
 
@@ -128,13 +128,13 @@ impl QueueChannel {
         &self,
         value: LinkedList<PathBuf>,
     ) -> Result<(), mpsc::SendError<LinkedList<PathBuf>>> {
-        self.send_buffer.add_sequential(1);
+        self.send_buffer.fetch_add(1, Ordering::SeqCst);
         let result: Result<(), mpsc::SendError<LinkedList<PathBuf>>> =
             self.sender.lock().unwrap().send(value);
         if result.is_ok() {
-            self.receive_buffer.add_sequential(1);
+            self.receive_buffer.fetch_add(1, Ordering::SeqCst);
         } else {
-            self.send_buffer.sub_sequential(1);
+            self.send_buffer.fetch_sub(1, Ordering::SeqCst);
         }
         result
     }
@@ -143,7 +143,7 @@ impl QueueChannel {
         let received: Result<LinkedList<PathBuf>, mpsc::RecvError> =
             self.receiver.lock().unwrap().recv();
         if received.is_ok() {
-            self.receive_buffer.sub_sequential(1);
+            self.receive_buffer.fetch_sub(1, Ordering::SeqCst);
         }
         received
     }
@@ -152,18 +152,18 @@ impl QueueChannel {
         let received: Result<LinkedList<PathBuf>, mpsc::TryRecvError> =
             self.receiver.lock().unwrap().try_recv();
         if received.is_ok() {
-            self.receive_buffer.sub_sequential(1);
+            self.receive_buffer.fetch_sub(1, Ordering::SeqCst);
         }
         received
     }
 
     pub fn get_send_buffer(&self) -> usize {
-        let send_buffer: usize = self.send_buffer.load_sequential();
+        let send_buffer: usize = self.send_buffer.load(Ordering::SeqCst);
         send_buffer
     }
 
     pub fn get_receive_buffer(&self) -> usize {
-        let receive_buffer: usize = self.receive_buffer.load_sequential();
+        let receive_buffer: usize = self.receive_buffer.load(Ordering::SeqCst);
         receive_buffer
     }
 }

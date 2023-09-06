@@ -5,14 +5,14 @@ use std::fs::DirEntry;
 use std::fs::{Metadata, ReadDir};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
 use arranger::search::info::FileInfo;
-use arranger::search::mt_search::mt_progress::{SearchMetrics, SearchMetricsThreaded};
-use arranger::search::mt_search::mt_structs::{AtomicCounter, QueueChannel};
+use arranger::search::mt_search::mt_progress::{ProgressMetrics, SearchMetricsThreaded};
+use arranger::search::mt_search::mt_structs::QueueChannel;
 
 pub struct FileSearch {
     root: Option<PathBuf>,
@@ -49,7 +49,7 @@ impl FileSearch {
         files: &mut HashSet<FileInfo>,
         search_progress: &Arc<SearchMetricsThreaded>,
     ) {
-        let progress_metrics: Arc<SearchMetrics> = search_progress.get_metrics();
+        let progress_metrics: Arc<ProgressMetrics> = search_progress.get_metrics();
         progress_metrics.increment_search_count();
         progress_metrics.add_search_bytes(&metadata);
 
@@ -117,7 +117,7 @@ pub struct SearchThreadManager {
     max_threads: usize,
     batch_size: usize,
     file_search: Arc<FileSearch>,
-    active_threads: Arc<AtomicCounter>,
+    active_threads: Arc<AtomicUsize>,
     queue_channel: Arc<QueueChannel>,
     search_progress: Arc<SearchMetricsThreaded>,
     halt: Arc<AtomicBool>,
@@ -126,7 +126,7 @@ pub struct SearchThreadManager {
 impl SearchThreadManager {
     pub fn new(max_threads: usize, batch_size: usize, file_search: FileSearch) -> Self {
         let file_search: Arc<FileSearch> = Arc::new(file_search);
-        let active_threads: Arc<AtomicCounter> = Arc::new(AtomicCounter::new(0));
+        let active_threads: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
         let queue_channel: Arc<QueueChannel> = Arc::new(QueueChannel::new());
 
         let search_progress: Arc<SearchMetricsThreaded> =
@@ -163,10 +163,10 @@ impl SearchThreadManager {
         receive_buffer: usize,
         queue: &LinkedList<PathBuf>,
     ) {
-        let progress_counters: Arc<SearchMetrics> = self.search_progress.get_metrics();
-        progress_counters.set_threads(active_threads);
-        progress_counters.set_receive_buffer(receive_buffer);
-        progress_counters.set_queue(queue.len());
+        let progress_metrics: Arc<ProgressMetrics> = self.search_progress.get_metrics();
+        progress_metrics.set_threads(active_threads);
+        progress_metrics.set_receive_buffer(receive_buffer);
+        progress_metrics.set_queue(queue.len());
     }
 
     fn spawn_walkers(&self, queue: &mut LinkedList<PathBuf>) {
@@ -176,7 +176,7 @@ impl SearchThreadManager {
             let batch: Vec<PathBuf> = self.get_queue_batch(queue);
             let _ = self.add_batched_thread(batch);
 
-            let active_threads: usize = self.active_threads.load_sequential();
+            let active_threads: usize = self.active_threads.load(Ordering::SeqCst);
             let receive_buffer: usize = self.queue_channel.get_receive_buffer();
             self.set_progress_metrics(active_threads, receive_buffer, queue);
             // self.search_progress.display_progress();
@@ -203,8 +203,7 @@ impl SearchThreadManager {
         let halt: Arc<AtomicBool> = self.halt.clone();
 
         let _ = thread::spawn(move || loop {
-            search_progress.display_progress();
-            thread::sleep(Duration::from_millis(1));
+            search_progress.blocking_display_progress();
             if halt.load(Ordering::SeqCst) {
                 break;
             }
@@ -240,7 +239,7 @@ impl SearchThreadManager {
     }
 
     fn get_updated_halt_condition(&self, queue: &LinkedList<PathBuf>) -> bool {
-        let active_threads: usize = self.active_threads.load_sequential();
+        let active_threads: usize = self.active_threads.load(Ordering::SeqCst);
         let receive_buffer: usize = self.queue_channel.get_receive_buffer();
         if queue.len() == 0 && active_threads == 0 && receive_buffer == 0 {
             return true;
@@ -250,7 +249,7 @@ impl SearchThreadManager {
 
     fn wait_for_threads(&self) {
         loop {
-            let active_threads: usize = self.active_threads.load_sequential();
+            let active_threads: usize = self.active_threads.load(Ordering::SeqCst);
             if active_threads < self.max_threads {
                 break;
             }
@@ -260,14 +259,14 @@ impl SearchThreadManager {
 
     fn add_batched_thread<'a>(&'a self, batch: Vec<PathBuf>) -> thread::JoinHandle<()> {
         let search_clone: Arc<FileSearch> = self.file_search.clone();
-        let active_threads: Arc<AtomicCounter> = self.active_threads.clone();
+        let active_threads: Arc<AtomicUsize> = self.active_threads.clone();
         let queue_channel: Arc<QueueChannel> = self.queue_channel.clone();
         let search_progress: Arc<SearchMetricsThreaded> = self.search_progress.clone();
 
         let handle: thread::JoinHandle<()> = thread::spawn(move || {
-            active_threads.add_sequential(1);
+            active_threads.fetch_add(1, Ordering::SeqCst);
             search_clone.batch_walker(batch, queue_channel, &search_progress);
-            active_threads.sub_sequential(1);
+            active_threads.fetch_sub(1, Ordering::SeqCst);
         });
         handle
     }
@@ -304,7 +303,7 @@ impl SearchThreadManager {
 fn test_multithread() {
     println!("\n\n");
     let mut file_search = FileSearch::new();
-    file_search.set_root("E:/");
+    file_search.set_root("C:/");
 
     let max_threads: usize = 12;
     let batch_size: usize = 500;

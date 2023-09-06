@@ -1,36 +1,36 @@
 use std::fs::Metadata;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::search::formatters::format_size;
 use crate::search::formatters::format_time;
 
-use crate::search::mt_search::mt_structs::AtomicCounter;
-
 use crate::general::table_display::DynamicTable;
 use crate::terminal::ConsoleWriter;
 
-pub struct SearchMetrics {
-    search_counter: AtomicCounter,
-    match_counter: AtomicCounter,
-    search_bytes: AtomicCounter,
-    threads: AtomicCounter,
-    queue: AtomicCounter,
-    receive_buffer: AtomicCounter,
+pub struct ProgressMetrics {
+    search_counter: AtomicUsize,
+    match_counter: AtomicUsize,
+    search_bytes: AtomicUsize,
+    threads: AtomicUsize,
+    queue: AtomicUsize,
+    receive_buffer: AtomicUsize,
 }
 
-impl SearchMetrics {
-    pub fn new() -> SearchMetrics {
-        let search_counter: AtomicCounter = AtomicCounter::new(0);
-        let match_counter: AtomicCounter = AtomicCounter::new(0);
-        let search_bytes: AtomicCounter = AtomicCounter::new(0);
-        let threads: AtomicCounter = AtomicCounter::new(0);
-        let queue: AtomicCounter = AtomicCounter::new(0);
-        let receive_buffer: AtomicCounter = AtomicCounter::new(0);
+impl ProgressMetrics {
+    pub fn new() -> ProgressMetrics {
+        let search_counter: AtomicUsize = AtomicUsize::new(0);
+        let match_counter: AtomicUsize = AtomicUsize::new(0);
+        let search_bytes: AtomicUsize = AtomicUsize::new(0);
+        let threads: AtomicUsize = AtomicUsize::new(0);
+        let queue: AtomicUsize = AtomicUsize::new(0);
+        let receive_buffer: AtomicUsize = AtomicUsize::new(0);
 
-        SearchMetrics {
+        ProgressMetrics {
             search_counter,
             match_counter,
             search_bytes,
@@ -41,49 +41,47 @@ impl SearchMetrics {
     }
 
     pub fn increment_search_count(&self) {
-        self.search_counter.add_relaxed(1);
+        self.search_counter.fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn increment_match_count(&self) {
-        self.match_counter.add_relaxed(1);
+        self.match_counter.fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn add_search_bytes(&self, metadata: &Metadata) {
         let bytes: usize = metadata.len() as usize;
-        self.search_bytes.add_relaxed(bytes);
+        self.search_bytes.fetch_add(bytes, Ordering::Relaxed);
     }
 
     pub fn set_threads(&self, threads: usize) {
-        self.threads.store_value_relaxed(threads);
+        self.threads.store(threads, Ordering::Relaxed);
     }
 
     pub fn set_queue(&self, queue: usize) {
-        self.queue.store_value_relaxed(queue);
+        self.queue.store(queue, Ordering::Relaxed);
     }
 
     pub fn set_receive_buffer(&self, receive_buffer: usize) {
-        self.receive_buffer.store_value_relaxed(receive_buffer);
+        self.receive_buffer.store(receive_buffer, Ordering::Relaxed);
     }
 }
 
 pub struct SearchMetricsThreaded {
     table: Arc<Mutex<DynamicTable>>,
     writer: Arc<Mutex<ConsoleWriter>>,
-    metrics: Arc<SearchMetrics>,
+    metrics: Arc<ProgressMetrics>,
     time: Instant,
     display_time: Arc<RwLock<Instant>>,
     display_interval: Duration,
-    elapsed_time_ns: AtomicCounter,
 }
 
 impl SearchMetricsThreaded {
     pub fn new(display_interval: Duration) -> Self {
         let table: Arc<Mutex<DynamicTable>> = Arc::new(Mutex::new(DynamicTable::new(0.8, 1)));
         let writer: Arc<Mutex<ConsoleWriter>> = Arc::new(Mutex::new(ConsoleWriter::new()));
-        let metrics: Arc<SearchMetrics> = Arc::new(SearchMetrics::new());
+        let metrics: Arc<ProgressMetrics> = Arc::new(ProgressMetrics::new());
         let time: Instant = Instant::now();
         let display_time: Arc<RwLock<Instant>> = Arc::new(RwLock::new(Instant::now()));
-        let elapsed_time_ns: AtomicCounter = AtomicCounter::new(0);
 
         writer.lock().unwrap().setup_console_configuration();
 
@@ -94,11 +92,10 @@ impl SearchMetricsThreaded {
             time,
             display_time,
             display_interval,
-            elapsed_time_ns,
         }
     }
 
-    pub fn get_metrics(&self) -> Arc<SearchMetrics> {
+    pub fn get_metrics(&self) -> Arc<ProgressMetrics> {
         self.metrics.clone()
     }
 
@@ -106,13 +103,19 @@ impl SearchMetricsThreaded {
         let elapsed_time: Duration = self.get_elapsed_display_time();
         if elapsed_time >= self.display_interval {
             self.table.lock().unwrap().update_terminal_width();
-            self.write_progress();
+            self.write_progress(Ordering::Relaxed);
             self.update_display_time();
         }
     }
 
+    pub fn blocking_display_progress(&self) {
+        self.table.lock().unwrap().update_terminal_width();
+        self.write_progress(Ordering::Relaxed);
+        thread::sleep(self.display_interval);
+    }
+
     pub fn display_progress_finalize(&self) {
-        self.write_progress();
+        self.write_progress(Ordering::SeqCst);
         self.writer.lock().unwrap().end();
         self.writer.lock().unwrap().reset_console_configuration();
         println!();
@@ -124,17 +127,13 @@ impl SearchMetricsThreaded {
         table_guard.add_parameter_string("Path", &path_string);
     }
 
-    pub fn get_elapsed_time_ns(&self) -> usize {
-        self.elapsed_time_ns.load_relaxed()
+    pub fn get_elapsed_time(&self) -> Duration {
+        let elapsed_time: Duration = self.time.elapsed();
+        elapsed_time
     }
 }
 
 impl SearchMetricsThreaded {
-    fn update_elapsed_time_ns(&self) {
-        let elapsed_time_ns: usize = self.time.elapsed().as_nanos() as usize;
-        self.elapsed_time_ns.store_value_relaxed(elapsed_time_ns);
-    }
-
     fn update_display_time(&self) {
         let mut instant_guard: RwLockWriteGuard<'_, Instant> = self.display_time.write().unwrap();
         *instant_guard = Instant::now();
@@ -146,18 +145,16 @@ impl SearchMetricsThreaded {
         elapsed_time
     }
 
-    fn write_progress(&self) {
-        let search_bytes: usize = self.metrics.search_bytes.load_relaxed();
-        let match_counter: usize = self.metrics.match_counter.load_relaxed();
-        let search_counter: usize = self.metrics.search_counter.load_relaxed();
-        let threads: usize = self.metrics.threads.load_relaxed();
-        let queue: usize = self.metrics.queue.load_relaxed();
-        let receive_buffer: usize = self.metrics.receive_buffer.load_relaxed();
+    fn write_progress(&self, ordering: Ordering) {
+        let search_bytes: usize = self.metrics.search_bytes.load(ordering);
+        let match_counter: usize = self.metrics.match_counter.load(ordering);
+        let search_counter: usize = self.metrics.search_counter.load(ordering);
+        let threads: usize = self.metrics.threads.load(ordering);
+        let queue: usize = self.metrics.queue.load(ordering);
+        let receive_buffer: usize = self.metrics.receive_buffer.load(ordering);
 
         let size_string: String = format_size(search_bytes);
-
-        self.update_elapsed_time_ns();
-        let time_string: String = format_time(self.get_elapsed_time_ns() as u128);
+        let time_string: String = format_time(self.get_elapsed_time().as_nanos());
 
         let mut table_guard: MutexGuard<'_, DynamicTable> = self.table.lock().unwrap();
 
