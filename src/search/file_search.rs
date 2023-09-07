@@ -179,6 +179,17 @@ impl FileSearch {
         error
     }
 
+    fn get_root_path(&self) -> Result<PathBuf, io::Error> {
+        let root: PathBuf = if let Some(root) = &self.root {
+            root.to_path_buf()
+        } else {
+            env::current_dir().unwrap()
+        };
+
+        let root: Result<PathBuf, io::Error> = root.canonicalize();
+        root
+    }
+
     fn evaluate_entry_criteria(&self, path: &PathBuf) -> bool {
         let filename_regex: bool = self.exclusive_filename_regex.is_some();
         let is_exclusive_filename: bool = if filename_regex {
@@ -191,17 +202,6 @@ impl FileSearch {
         let entry_criteria: bool = is_exclusive_filename && is_exclusive_extension;
 
         entry_criteria
-    }
-
-    fn get_root_path(&self) -> Result<PathBuf, io::Error> {
-        let root: PathBuf = if let Some(root) = &self.root {
-            root.to_path_buf()
-        } else {
-            env::current_dir().unwrap()
-        };
-
-        let root: Result<PathBuf, io::Error> = root.canonicalize();
-        root
     }
 
     fn is_same_directory(&self, path: &PathBuf, dir: &PathBuf) -> bool {

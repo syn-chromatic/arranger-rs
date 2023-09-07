@@ -1,9 +1,10 @@
 use std::io;
 use std::io::Write;
+use std::sync::Arc;
 
-use arranger::search::file_search::FileSearch;
 use arranger::search::formatters::format_time;
-use arranger::search::progress::SearchProgress;
+use arranger::search::mt_search::mt_progress::SearchMetrics;
+use arranger::search::mt_search::mt_search::{FileSearch, SearchThreadScheduler};
 
 #[test]
 fn search_benchmark() {
@@ -35,10 +36,12 @@ fn search_no_capture(iterations: usize) {
     file_search.set_root("./benches/search_benchmark/benchmark_files");
     file_search.set_exclusive_filename("file_500001.txt");
 
+    let search_scheduler: SearchThreadScheduler = SearchThreadScheduler::new(12, 100, file_search);
+
     let mut total_time: u128 = 0;
     for _ in 0..iterations {
-        let progress: SearchProgress = file_search.search_files_benchmark();
-        let elapsed_time: u128 = progress.get_elapsed_time_ns();
+        let progress: Arc<SearchMetrics> = search_scheduler.search_files_benchmark();
+        let elapsed_time: u128 = progress.get_elapsed_time().as_nanos();
         total_time += elapsed_time;
     }
 
@@ -55,10 +58,12 @@ fn search_capture_all(iterations: usize) {
     file_search.set_exclusive_filename("file_");
     file_search.set_exclusive_extensions(["txt"]);
 
+    let search_scheduler: SearchThreadScheduler = SearchThreadScheduler::new(12, 100, file_search);
+
     let mut total_time: u128 = 0;
     for _ in 0..iterations {
-        let progress: SearchProgress = file_search.search_files_benchmark();
-        let elapsed_time: u128 = progress.get_elapsed_time_ns();
+        let progress: Arc<SearchMetrics> = search_scheduler.search_files_benchmark();
+        let elapsed_time: u128 = progress.get_elapsed_time().as_nanos();
         total_time += elapsed_time;
     }
 
@@ -74,10 +79,12 @@ fn search_regex_capture_all(iterations: usize) {
     file_search.set_root("./benches/search_benchmark/benchmark_files");
     let _ = file_search.set_exclusive_filename_regex(".*");
 
+    let search_scheduler: SearchThreadScheduler = SearchThreadScheduler::new(12, 100, file_search);
+
     let mut total_time: u128 = 0;
     for _ in 0..iterations {
-        let progress: SearchProgress = file_search.search_files_benchmark();
-        let elapsed_time: u128 = progress.get_elapsed_time_ns();
+        let progress: Arc<SearchMetrics> = search_scheduler.search_files_benchmark();
+        let elapsed_time: u128 = progress.get_elapsed_time().as_nanos();
         total_time += elapsed_time;
     }
 
@@ -105,10 +112,12 @@ fn search_regex_complex_capture_all(iterations: usize) {
 
     let _ = file_search.set_exclusive_filename_regex(&complex_pattern);
 
+    let search_scheduler: SearchThreadScheduler = SearchThreadScheduler::new(12, 100, file_search);
+
     let mut total_time: u128 = 0;
     for _ in 0..iterations {
-        let progress: SearchProgress = file_search.search_files_benchmark();
-        let elapsed_time: u128 = progress.get_elapsed_time_ns();
+        let progress: Arc<SearchMetrics> = search_scheduler.search_files_benchmark();
+        let elapsed_time: u128 = progress.get_elapsed_time().as_nanos();
         total_time += elapsed_time;
     }
 

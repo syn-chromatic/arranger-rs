@@ -9,7 +9,7 @@ use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
 use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
-use crate::search::file::FileSearch;
+use crate::search::file_search::FileSearch;
 use crate::search::info::FileInfo;
 
 use crate::terminal::Terminal;

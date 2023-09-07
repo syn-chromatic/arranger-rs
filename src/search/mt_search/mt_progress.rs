@@ -19,6 +19,8 @@ pub struct ProgressMetrics {
     threads: AtomicUsize,
     queue: AtomicUsize,
     receive_buffer: AtomicUsize,
+    batch: AtomicUsize,
+    job_queue: AtomicUsize,
 }
 
 impl ProgressMetrics {
@@ -29,6 +31,8 @@ impl ProgressMetrics {
         let threads: AtomicUsize = AtomicUsize::new(0);
         let queue: AtomicUsize = AtomicUsize::new(0);
         let receive_buffer: AtomicUsize = AtomicUsize::new(0);
+        let batch: AtomicUsize = AtomicUsize::new(0);
+        let job_queue: AtomicUsize = AtomicUsize::new(0);
 
         ProgressMetrics {
             search_counter,
@@ -37,6 +41,8 @@ impl ProgressMetrics {
             threads,
             queue,
             receive_buffer,
+            batch,
+            job_queue,
         }
     }
 
@@ -64,9 +70,17 @@ impl ProgressMetrics {
     pub fn set_receive_buffer(&self, receive_buffer: usize) {
         self.receive_buffer.store(receive_buffer, Ordering::Relaxed);
     }
+
+    pub fn set_batch(&self, batch: usize) {
+        self.batch.store(batch, Ordering::Relaxed);
+    }
+
+    pub fn set_job_queue(&self, job_queue: usize) {
+        self.job_queue.store(job_queue, Ordering::Relaxed);
+    }
 }
 
-pub struct SearchMetricsThreaded {
+pub struct SearchMetrics {
     table: Arc<Mutex<DynamicTable>>,
     writer: Arc<Mutex<ConsoleWriter>>,
     metrics: Arc<ProgressMetrics>,
@@ -75,7 +89,7 @@ pub struct SearchMetricsThreaded {
     display_interval: Duration,
 }
 
-impl SearchMetricsThreaded {
+impl SearchMetrics {
     pub fn new(display_interval: Duration) -> Self {
         let table: Arc<Mutex<DynamicTable>> = Arc::new(Mutex::new(DynamicTable::new(0.8, 1)));
         let writer: Arc<Mutex<ConsoleWriter>> = Arc::new(Mutex::new(ConsoleWriter::new()));
@@ -85,7 +99,7 @@ impl SearchMetricsThreaded {
 
         writer.lock().unwrap().setup_console_configuration();
 
-        SearchMetricsThreaded {
+        SearchMetrics {
             table,
             writer,
             metrics,
@@ -133,7 +147,7 @@ impl SearchMetricsThreaded {
     }
 }
 
-impl SearchMetricsThreaded {
+impl SearchMetrics {
     fn update_display_time(&self) {
         let mut instant_guard: RwLockWriteGuard<'_, Instant> = self.display_time.write().unwrap();
         *instant_guard = Instant::now();
@@ -152,6 +166,8 @@ impl SearchMetricsThreaded {
         let threads: usize = self.metrics.threads.load(ordering);
         let queue: usize = self.metrics.queue.load(ordering);
         let receive_buffer: usize = self.metrics.receive_buffer.load(ordering);
+        let batch: usize = self.metrics.batch.load(ordering);
+        let job_queue: usize = self.metrics.job_queue.load(ordering);
 
         let size_string: String = format_size(search_bytes);
         let time_string: String = format_time(self.get_elapsed_time().as_nanos());
@@ -164,6 +180,8 @@ impl SearchMetricsThreaded {
         table_guard.add_parameter("Threads", threads);
         table_guard.add_parameter("Queue", queue);
         table_guard.add_parameter("Buffer", receive_buffer);
+        table_guard.add_parameter("Batch", batch);
+        table_guard.add_parameter("Job Queue", job_queue);
         table_guard.add_parameter_string("Time", &time_string);
 
         let table_string: String = table_guard.get_table_string();

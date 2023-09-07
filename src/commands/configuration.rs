@@ -155,6 +155,10 @@ pub struct SearchOption {
     /// Enable the regex engine for pattern matching
     #[arg(short = 'R', long = "regex", default_value = "false")]
     pub regex: bool,
+
+    /// Specify the amount of threads to use
+    #[arg(short = 'T', long = "threads", default_value = "4")]
+    pub threads: usize,
 }
 
 fn parse_search_option_limit(value: &str) -> Result<usize, &'static str> {

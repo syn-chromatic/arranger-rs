@@ -13,8 +13,9 @@ use crate::commands::configuration::SearchOption;
 use crate::commands::configuration::SearchSort;
 use crate::general::table_display::DynamicTable;
 use crate::general::table_display::FileInfoTable;
-use crate::search::file::FileSearch;
+
 use crate::search::info::FileInfo;
+use crate::search::mt_search::mt_search::{FileSearch, SearchThreadScheduler};
 
 pub struct SearchCommand {
     option: SearchOption,
@@ -39,7 +40,12 @@ impl SearchCommand {
                 Err(_) => return,
             };
 
-            let mut files_hashset: HashSet<FileInfo> = file_search.search_files();
+            let threads: usize = self.option.threads;
+            let batch_size: usize = 100;
+            let search_scheduler: SearchThreadScheduler =
+                SearchThreadScheduler::new(threads, batch_size, file_search);
+
+            let mut files_hashset: HashSet<FileInfo> = search_scheduler.search_files();
             let mut files: Vec<FileInfo> = files_hashset.drain().collect();
             self.sort_files(&mut files);
             self.print_files(&files);

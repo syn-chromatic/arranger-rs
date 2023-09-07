@@ -140,6 +140,7 @@ ___
     -S/--sort : Specify Sorting Of Results [size_asc, size_desc, created_asc, created_desc, modified_asc, modified_desc]
     -L/--limit : Specify Limit For Results
     -R/--regex : Enable the regex engine for pattern matching
+    -T/--threads : Specify the amount of threads to use
 
     Examples:
     # Search for file by name
