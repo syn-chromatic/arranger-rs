@@ -9,6 +9,7 @@ pub mod search;
 pub mod structures;
 pub mod terminal;
 pub mod utils;
+pub mod threading;
 
 use std::io;
 

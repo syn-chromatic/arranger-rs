@@ -1,89 +1,19 @@
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-pub struct ThreadChannel {
-    sender: Arc<Mutex<mpsc::Sender<Box<dyn FnOnce() + Send>>>>,
-    receiver: Arc<Mutex<mpsc::Receiver<Box<dyn FnOnce() + Send>>>>,
-    send_buffer: AtomicUsize,
-    receive_buffer: AtomicUsize,
-}
-
-impl ThreadChannel {
-    pub fn new() -> Self {
-        let (sender, receiver): (
-            mpsc::Sender<Box<dyn FnOnce() + Send>>,
-            mpsc::Receiver<Box<dyn FnOnce() + Send>>,
-        ) = mpsc::channel();
-
-        let sender: Arc<Mutex<mpsc::Sender<Box<dyn FnOnce() + Send>>>> =
-            Arc::new(Mutex::new(sender));
-        let receiver: Arc<Mutex<mpsc::Receiver<Box<dyn FnOnce() + Send>>>> =
-            Arc::new(Mutex::new(receiver));
-
-        ThreadChannel {
-            sender,
-            receiver,
-            send_buffer: AtomicUsize::new(0),
-            receive_buffer: AtomicUsize::new(0),
-        }
-    }
-
-    pub fn send(
-        &self,
-        value: Box<dyn FnOnce() + Send>,
-    ) -> Result<(), mpsc::SendError<Box<dyn FnOnce() + Send>>> {
-        self.send_buffer.fetch_add(1, Ordering::SeqCst);
-        let result: Result<(), mpsc::SendError<Box<dyn FnOnce() + Send>>> =
-            self.sender.lock().unwrap().send(value);
-        if result.is_ok() {
-            self.receive_buffer.fetch_add(1, Ordering::SeqCst);
-        } else {
-            self.send_buffer.fetch_sub(1, Ordering::SeqCst);
-        }
-        result
-    }
-
-    pub fn recv(&self) -> Result<Box<dyn FnOnce() + Send>, mpsc::RecvError> {
-        let received: Result<Box<dyn FnOnce() + Send>, mpsc::RecvError> =
-            self.receiver.lock().unwrap().recv();
-        if received.is_ok() {
-            self.receive_buffer.fetch_sub(1, Ordering::SeqCst);
-        }
-        received
-    }
-
-    pub fn try_recv(&self) -> Result<Box<dyn FnOnce() + Send>, mpsc::TryRecvError> {
-        let received: Result<Box<dyn FnOnce() + Send>, mpsc::TryRecvError> =
-            self.receiver.lock().unwrap().try_recv();
-        if received.is_ok() {
-            self.receive_buffer.fetch_sub(1, Ordering::SeqCst);
-        }
-        received
-    }
-
-    pub fn get_send_buffer(&self) -> usize {
-        let send_buffer: usize = self.send_buffer.load(Ordering::SeqCst);
-        send_buffer
-    }
-
-    pub fn get_receive_buffer(&self) -> usize {
-        let receive_buffer: usize = self.receive_buffer.load(Ordering::SeqCst);
-        receive_buffer
-    }
-}
+use crate::threading::thread_structs::AtomicChannel;
 
 pub struct ThreadManager {
-    channel: Arc<ThreadChannel>,
+    channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>,
     workers: Vec<ThreadWorker>,
 }
 
 impl ThreadManager {
     pub fn new(size: usize) -> ThreadManager {
-        let channel: Arc<ThreadChannel> = Arc::new(ThreadChannel::new());
+        let channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>> = Arc::new(AtomicChannel::new());
         let workers: Vec<ThreadWorker> = Self::get_workers(size, channel.clone());
 
         ThreadManager { channel, workers }
@@ -109,7 +39,7 @@ impl ThreadManager {
     }
 
     pub fn get_job_queue(&self) -> usize {
-        let receive_buffer: usize = self.channel.get_receive_buffer();
+        let receive_buffer: usize = self.channel.get_buffer();
         receive_buffer
     }
 
@@ -128,7 +58,10 @@ impl ThreadManager {
 }
 
 impl ThreadManager {
-    fn get_workers(size: usize, channel: Arc<ThreadChannel>) -> Vec<ThreadWorker> {
+    fn get_workers(
+        size: usize,
+        channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>,
+    ) -> Vec<ThreadWorker> {
         let mut workers: Vec<ThreadWorker> = Vec::with_capacity(size);
 
         for id in 0..size {
@@ -143,13 +76,13 @@ impl ThreadManager {
 pub struct ThreadWorker {
     id: usize,
     thread: Option<thread::JoinHandle<()>>,
-    channel: Arc<ThreadChannel>,
+    channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>,
     is_active: Arc<AtomicBool>,
     terminate_signal: Arc<AtomicBool>,
 }
 
 impl ThreadWorker {
-    pub fn new(id: usize, channel: Arc<ThreadChannel>) -> ThreadWorker {
+    pub fn new(id: usize, channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>) -> ThreadWorker {
         let thread: Option<thread::JoinHandle<()>> = None;
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
@@ -185,7 +118,7 @@ impl ThreadWorker {
 
 impl ThreadWorker {
     fn get_worker_loop(&self) -> impl Fn() {
-        let channel: Arc<ThreadChannel> = self.channel.clone();
+        let channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>> = self.channel.clone();
         let is_active: Arc<AtomicBool> = self.is_active.clone();
         let terminate_signal: Arc<AtomicBool> = self.terminate_signal.clone();
 
@@ -202,7 +135,7 @@ impl ThreadWorker {
                     job();
                     is_active.store(false, Ordering::SeqCst);
                 } else {
-                    thread::sleep(Duration::from_nanos(1));
+                    thread::sleep(Duration::from_micros(1));
                 }
             }
             is_active.store(false, Ordering::SeqCst);

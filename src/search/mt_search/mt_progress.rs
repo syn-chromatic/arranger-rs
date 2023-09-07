@@ -1,8 +1,8 @@
 use std::fs::Metadata;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
-use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::RwLock;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -17,10 +17,6 @@ pub struct ProgressMetrics {
     match_counter: AtomicUsize,
     search_bytes: AtomicUsize,
     threads: AtomicUsize,
-    queue: AtomicUsize,
-    receive_buffer: AtomicUsize,
-    batch: AtomicUsize,
-    job_queue: AtomicUsize,
 }
 
 impl ProgressMetrics {
@@ -29,20 +25,12 @@ impl ProgressMetrics {
         let match_counter: AtomicUsize = AtomicUsize::new(0);
         let search_bytes: AtomicUsize = AtomicUsize::new(0);
         let threads: AtomicUsize = AtomicUsize::new(0);
-        let queue: AtomicUsize = AtomicUsize::new(0);
-        let receive_buffer: AtomicUsize = AtomicUsize::new(0);
-        let batch: AtomicUsize = AtomicUsize::new(0);
-        let job_queue: AtomicUsize = AtomicUsize::new(0);
 
         ProgressMetrics {
             search_counter,
             match_counter,
             search_bytes,
             threads,
-            queue,
-            receive_buffer,
-            batch,
-            job_queue,
         }
     }
 
@@ -62,22 +50,6 @@ impl ProgressMetrics {
     pub fn set_threads(&self, threads: usize) {
         self.threads.store(threads, Ordering::Relaxed);
     }
-
-    pub fn set_queue(&self, queue: usize) {
-        self.queue.store(queue, Ordering::Relaxed);
-    }
-
-    pub fn set_receive_buffer(&self, receive_buffer: usize) {
-        self.receive_buffer.store(receive_buffer, Ordering::Relaxed);
-    }
-
-    pub fn set_batch(&self, batch: usize) {
-        self.batch.store(batch, Ordering::Relaxed);
-    }
-
-    pub fn set_job_queue(&self, job_queue: usize) {
-        self.job_queue.store(job_queue, Ordering::Relaxed);
-    }
 }
 
 pub struct SearchMetrics {
@@ -92,12 +64,12 @@ pub struct SearchMetrics {
 impl SearchMetrics {
     pub fn new(display_interval: Duration) -> Self {
         let table: Arc<Mutex<DynamicTable>> = Arc::new(Mutex::new(DynamicTable::new(0.8, 1)));
-        let writer: Arc<Mutex<ConsoleWriter>> = Arc::new(Mutex::new(ConsoleWriter::new()));
+        let writer: ConsoleWriter = ConsoleWriter::new();
+        writer.setup_console_configuration();
+        let writer: Arc<Mutex<ConsoleWriter>> = Arc::new(Mutex::new(writer));
         let metrics: Arc<ProgressMetrics> = Arc::new(ProgressMetrics::new());
         let time: Instant = Instant::now();
         let display_time: Arc<RwLock<Instant>> = Arc::new(RwLock::new(Instant::now()));
-
-        writer.lock().unwrap().setup_console_configuration();
 
         SearchMetrics {
             table,
@@ -116,29 +88,36 @@ impl SearchMetrics {
     pub fn display_progress(&self) {
         let elapsed_time: Duration = self.get_elapsed_display_time();
         if elapsed_time >= self.display_interval {
-            self.table.lock().unwrap().update_terminal_width();
+            if let Ok(mut table) = self.table.lock() {
+                table.update_terminal_width();
+            }
             self.write_progress(Ordering::Relaxed);
             self.update_display_time();
         }
     }
 
     pub fn blocking_display_progress(&self) {
-        self.table.lock().unwrap().update_terminal_width();
+        if let Ok(mut table) = self.table.lock() {
+            table.update_terminal_width();
+        }
         self.write_progress(Ordering::Relaxed);
         thread::sleep(self.display_interval);
     }
 
     pub fn display_progress_finalize(&self) {
         self.write_progress(Ordering::SeqCst);
-        self.writer.lock().unwrap().end();
-        self.writer.lock().unwrap().reset_console_configuration();
+        if let Ok(mut writer) = self.writer.lock() {
+            writer.end();
+            writer.reset_console_configuration();
+        }
         println!();
     }
 
     pub fn set_search_path(&mut self, path: &PathBuf) {
         let path_string: String = self.get_path_string(&path);
-        let mut table_guard: MutexGuard<'_, DynamicTable> = self.table.lock().unwrap();
-        table_guard.add_parameter_string("Path", &path_string);
+        if let Ok(mut table) = self.table.lock() {
+            table.add_parameter_string("Path", &path_string);
+        }
     }
 
     pub fn get_elapsed_time(&self) -> Duration {
@@ -149,14 +128,17 @@ impl SearchMetrics {
 
 impl SearchMetrics {
     fn update_display_time(&self) {
-        let mut instant_guard: RwLockWriteGuard<'_, Instant> = self.display_time.write().unwrap();
-        *instant_guard = Instant::now();
+        if let Ok(mut display_time) = self.display_time.write() {
+            *display_time = Instant::now();
+        }
     }
 
     fn get_elapsed_display_time(&self) -> Duration {
-        let instant_guard: RwLockReadGuard<'_, Instant> = self.display_time.read().unwrap();
-        let elapsed_time: Duration = instant_guard.elapsed();
-        elapsed_time
+        if let Ok(display_time) = self.display_time.read() {
+            let elapsed_time: Duration = display_time.elapsed();
+            return elapsed_time;
+        }
+        Duration::from_secs(0)
     }
 
     fn write_progress(&self, ordering: Ordering) {
@@ -164,28 +146,22 @@ impl SearchMetrics {
         let match_counter: usize = self.metrics.match_counter.load(ordering);
         let search_counter: usize = self.metrics.search_counter.load(ordering);
         let threads: usize = self.metrics.threads.load(ordering);
-        let queue: usize = self.metrics.queue.load(ordering);
-        let receive_buffer: usize = self.metrics.receive_buffer.load(ordering);
-        let batch: usize = self.metrics.batch.load(ordering);
-        let job_queue: usize = self.metrics.job_queue.load(ordering);
 
         let size_string: String = format_size(search_bytes);
         let time_string: String = format_time(self.get_elapsed_time().as_nanos());
 
-        let mut table_guard: MutexGuard<'_, DynamicTable> = self.table.lock().unwrap();
+        if let Ok(mut table) = self.table.lock() {
+            table.add_parameter("Match", match_counter);
+            table.add_parameter("Search", search_counter);
+            table.add_parameter_string("Size", &size_string);
+            table.add_parameter("Threads", threads);
+            table.add_parameter_string("Time", &time_string);
 
-        table_guard.add_parameter("Match", match_counter);
-        table_guard.add_parameter("Search", search_counter);
-        table_guard.add_parameter_string("Size", &size_string);
-        table_guard.add_parameter("Threads", threads);
-        table_guard.add_parameter("Queue", queue);
-        table_guard.add_parameter("Buffer", receive_buffer);
-        table_guard.add_parameter("Batch", batch);
-        table_guard.add_parameter("Job Queue", job_queue);
-        table_guard.add_parameter_string("Time", &time_string);
-
-        let table_string: String = table_guard.get_table_string();
-        self.writer.lock().unwrap().write(&table_string);
+            let table_string: String = table.get_table_string();
+            if let Ok(mut writer) = self.writer.lock() {
+                writer.write(&table_string);
+            }
+        }
     }
 
     fn get_path_string(&self, path: &PathBuf) -> String {
