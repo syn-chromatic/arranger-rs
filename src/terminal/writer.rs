@@ -216,10 +216,9 @@ impl ConsoleWriter {
         let _ = io::stdout().flush();
     }
 
-    pub fn end(&mut self) {
-        let row: usize = self.row_data.len() - 1;
-        let column: usize = self.row_data[row].1;
-        self.console.move_to(column, row);
+    pub fn go_to_end(&mut self) {
+        let row: usize = self.row_data.len();
+        self.console.move_to(0, row);
     }
 
     pub fn clear_all(&mut self) {

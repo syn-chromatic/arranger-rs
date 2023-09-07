@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -9,21 +9,29 @@ use crate::threading::thread_structs::AtomicChannel;
 pub struct ThreadManager {
     channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>,
     workers: Vec<ThreadWorker>,
+    terminated: AtomicBool,
 }
 
 impl ThreadManager {
     pub fn new(size: usize) -> ThreadManager {
         let channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>> = Arc::new(AtomicChannel::new());
         let workers: Vec<ThreadWorker> = Self::get_workers(size, channel.clone());
+        let terminated: AtomicBool = AtomicBool::new(true);
 
-        ThreadManager { channel, workers }
+        ThreadManager {
+            channel,
+            workers,
+            terminated,
+        }
     }
 
-    // Should check if threads are terminated
     pub fn execute<F>(&self, f: F)
     where
         F: FnOnce() + Send + 'static,
     {
+        if self.terminated.load(Ordering::SeqCst) {
+            self.start_workers();
+        }
         let job: Box<dyn FnOnce() + Send + 'static> = Box::new(f);
         let _ = self.channel.send(job);
     }
@@ -47,6 +55,7 @@ impl ThreadManager {
         for worker in self.workers.iter() {
             worker.terminate();
         }
+        self.terminated.store(true, Ordering::SeqCst);
         self.clear_receiver_channel();
     }
 
@@ -65,17 +74,23 @@ impl ThreadManager {
         let mut workers: Vec<ThreadWorker> = Vec::with_capacity(size);
 
         for id in 0..size {
-            let mut worker: ThreadWorker = ThreadWorker::new(id, channel.clone());
-            worker.start();
+            let worker: ThreadWorker = ThreadWorker::new(id, channel.clone());
             workers.push(worker);
         }
         workers
+    }
+
+    fn start_workers(&self) {
+        self.terminated.store(false, Ordering::SeqCst);
+        for worker in self.workers.iter() {
+            worker.start();
+        }
     }
 }
 
 pub struct ThreadWorker {
     id: usize,
-    thread: Option<thread::JoinHandle<()>>,
+    thread: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
     channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>,
     is_active: Arc<AtomicBool>,
     terminate_signal: Arc<AtomicBool>,
@@ -83,7 +98,7 @@ pub struct ThreadWorker {
 
 impl ThreadWorker {
     pub fn new(id: usize, channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>) -> ThreadWorker {
-        let thread: Option<thread::JoinHandle<()>> = None;
+        let thread: Arc<Mutex<Option<thread::JoinHandle<()>>>> = Arc::new(Mutex::new(None));
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
@@ -100,14 +115,24 @@ impl ThreadWorker {
         self.id
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&self) {
         let worker_loop = self.get_worker_loop();
         let thread: thread::JoinHandle<()> = thread::spawn(move || worker_loop());
-        self.thread = Some(thread);
+        if let Ok(mut thread_guard) = self.thread.lock() {
+            *thread_guard = Some(thread);
+        }
     }
 
     pub fn terminate(&self) {
         self.terminate_signal.store(true, Ordering::SeqCst);
+        if let Ok(thread_option) = self.thread.lock() {
+            if let Some(thread) = thread_option.as_ref() {
+                while !thread.is_finished() {
+                    thread::sleep(Duration::from_micros(1));
+                }
+            }
+        }
+        self.terminate_signal.store(false, Ordering::SeqCst);
     }
 
     pub fn is_active(&self) -> bool {
@@ -138,6 +163,78 @@ impl ThreadWorker {
                     thread::sleep(Duration::from_micros(1));
                 }
             }
+            is_active.store(false, Ordering::SeqCst);
+        };
+        worker_loop
+    }
+}
+
+pub struct ThreadLoopWorker {
+    thread: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
+    is_active: Arc<AtomicBool>,
+    terminate_signal: Arc<AtomicBool>,
+}
+
+impl ThreadLoopWorker {
+    pub fn new() -> ThreadLoopWorker {
+        let thread: Arc<Mutex<Option<thread::JoinHandle<()>>>> = Arc::new(Mutex::new(None));
+        let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+
+        ThreadLoopWorker {
+            thread,
+            is_active,
+            terminate_signal,
+        }
+    }
+
+    pub fn start<F>(&self, f: F)
+    where
+        F: Fn() + Send + 'static,
+    {
+        let worker_loop = self.get_worker_loop(f);
+        let thread: thread::JoinHandle<()> = thread::spawn(move || worker_loop());
+        if let Ok(mut thread_guard) = self.thread.lock() {
+            *thread_guard = Some(thread);
+        }
+    }
+
+    pub fn terminate(&self) {
+        self.terminate_signal.store(true, Ordering::SeqCst);
+        if let Ok(thread_option) = self.thread.lock() {
+            if let Some(thread) = thread_option.as_ref() {
+                while !thread.is_finished() {
+                    thread::sleep(Duration::from_micros(1));
+                }
+            }
+        }
+        self.terminate_signal.store(false, Ordering::SeqCst);
+    }
+
+    pub fn is_active(&self) -> bool {
+        let is_active: bool = self.is_active.load(Ordering::SeqCst);
+        is_active
+    }
+}
+
+impl ThreadLoopWorker {
+    pub fn get_worker_loop<F>(&self, job: F) -> impl Fn()
+    where
+        F: Fn() + Send + 'static,
+    {
+        let is_active: Arc<AtomicBool> = self.is_active.clone();
+        let terminate_signal: Arc<AtomicBool> = self.terminate_signal.clone();
+
+        let worker_loop = move || {
+            loop {
+                is_active.store(true, Ordering::SeqCst);
+                if terminate_signal.load(Ordering::SeqCst) {
+                    is_active.store(false, Ordering::SeqCst);
+                    break;
+                }
+                job();
+            }
+
             is_active.store(false, Ordering::SeqCst);
         };
         worker_loop

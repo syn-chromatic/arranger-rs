@@ -9,7 +9,7 @@ use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
 use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
-use crate::search::file_search::FileSearch;
+use crate::search::file_search::{FileSearch, SearchThreadScheduler};
 use crate::search::info::FileInfo;
 
 use crate::terminal::Terminal;
@@ -246,7 +246,12 @@ impl VirtualEnvSearch {
         file_search.set_exclusive_filename(filename);
         file_search.set_quit_directory_on_match(quit_directory_on_match);
 
-        let files: HashSet<FileInfo> = file_search.search_files();
+        let threads: usize = 4;
+        let batch_size: usize = 100;
+        let search_scheduler: SearchThreadScheduler =
+            SearchThreadScheduler::new(threads, batch_size, file_search);
+
+        let files: HashSet<FileInfo> = search_scheduler.search_files();
         files
     }
 

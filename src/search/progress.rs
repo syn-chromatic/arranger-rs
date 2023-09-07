@@ -1,6 +1,10 @@
 use std::fs::Metadata;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::RwLock;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::search::formatters::format_size;
 use crate::search::formatters::format_time;
@@ -8,95 +12,156 @@ use crate::search::formatters::format_time;
 use crate::general::table_display::DynamicTable;
 use crate::terminal::ConsoleWriter;
 
-pub struct SearchProgress {
-    table: DynamicTable,
-    writer: ConsoleWriter,
-    search_counter: usize,
-    match_counter: usize,
-    search_bytes: usize,
-    time: Instant,
-    elapsed_time_ns: u128,
+pub struct ProgressMetrics {
+    search_counter: AtomicUsize,
+    match_counter: AtomicUsize,
+    search_bytes: AtomicUsize,
+    threads: AtomicUsize,
 }
 
-impl SearchProgress {
-    pub fn new() -> Self {
-        let table: DynamicTable = DynamicTable::new(0.8, 1);
-        let writer: ConsoleWriter = ConsoleWriter::new();
-        let search_counter: usize = 0;
-        let match_counter: usize = 0;
-        let search_bytes: usize = 0;
-        let time: Instant = Instant::now();
-        let elapsed_time_ns: u128 = 0;
+impl ProgressMetrics {
+    pub fn new() -> ProgressMetrics {
+        let search_counter: AtomicUsize = AtomicUsize::new(0);
+        let match_counter: AtomicUsize = AtomicUsize::new(0);
+        let search_bytes: AtomicUsize = AtomicUsize::new(0);
+        let threads: AtomicUsize = AtomicUsize::new(0);
 
-        writer.setup_console_configuration();
-
-        SearchProgress {
-            table,
-            writer,
+        ProgressMetrics {
             search_counter,
             match_counter,
             search_bytes,
-            time,
-            elapsed_time_ns,
+            threads,
         }
     }
 
-    pub fn increment_search_count(&mut self) {
-        self.search_counter += 1;
+    pub fn increment_search_count(&self) {
+        self.search_counter.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn increment_match_count(&mut self) {
-        self.match_counter += 1;
+    pub fn increment_match_count(&self) {
+        self.match_counter.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn add_search_bytes(&mut self, metadata: &Metadata) {
+    pub fn add_search_bytes(&self, metadata: &Metadata) {
         let bytes: usize = metadata.len() as usize;
-        self.search_bytes += bytes;
+        self.search_bytes.fetch_add(bytes, Ordering::Relaxed);
     }
 
-    pub fn display_progress(&mut self) {
-        if self.search_counter % 500 == 0 {
-            self.table.update_terminal_width();
-            self.write_progress();
+    pub fn set_threads(&self, threads: usize) {
+        self.threads.store(threads, Ordering::Relaxed);
+    }
+}
+
+pub struct SearchMetrics {
+    table: Arc<Mutex<DynamicTable>>,
+    writer: Arc<Mutex<ConsoleWriter>>,
+    metrics: Arc<ProgressMetrics>,
+    time: Instant,
+    display_time: Arc<RwLock<Instant>>,
+    display_interval: Duration,
+}
+
+impl SearchMetrics {
+    pub fn new(display_interval: Duration) -> Self {
+        let table: Arc<Mutex<DynamicTable>> = Arc::new(Mutex::new(DynamicTable::new(0.8, 1)));
+        let writer: ConsoleWriter = ConsoleWriter::new();
+        writer.setup_console_configuration();
+        let writer: Arc<Mutex<ConsoleWriter>> = Arc::new(Mutex::new(writer));
+        let metrics: Arc<ProgressMetrics> = Arc::new(ProgressMetrics::new());
+        let time: Instant = Instant::now();
+        let display_time: Arc<RwLock<Instant>> = Arc::new(RwLock::new(Instant::now()));
+
+        SearchMetrics {
+            table,
+            writer,
+            metrics,
+            time,
+            display_time,
+            display_interval,
         }
     }
 
-    pub fn display_progress_finalize(&mut self) {
-        self.write_progress();
-        self.writer.end();
-        self.writer.reset_console_configuration();
+    pub fn get_metrics(&self) -> Arc<ProgressMetrics> {
+        self.metrics.clone()
+    }
+
+    pub fn display_progress(&self) {
+        let elapsed_time: Duration = self.get_elapsed_display_time();
+        if elapsed_time >= self.display_interval {
+            if let Ok(mut table) = self.table.lock() {
+                table.update_terminal_width();
+            }
+            self.write_progress(Ordering::Relaxed);
+            self.update_display_time();
+        }
+    }
+
+    pub fn blocking_display_progress(&self) {
+        if let Ok(mut table) = self.table.lock() {
+            table.update_terminal_width();
+        }
+        self.write_progress(Ordering::Relaxed);
+        thread::sleep(self.display_interval);
+    }
+
+    pub fn display_progress_finalize(&self) {
+        self.write_progress(Ordering::SeqCst);
+        if let Ok(mut writer) = self.writer.lock() {
+            writer.go_to_end();
+            writer.reset_console_configuration();
+        }
         println!();
     }
 
     pub fn set_search_path(&mut self, path: &PathBuf) {
-        let path_string = self.get_path_string(&path);
-        self.table.add_parameter_string("Path", &path_string);
+        let path_string: String = self.get_path_string(&path);
+        if let Ok(mut table) = self.table.lock() {
+            table.add_parameter_string("Path", &path_string);
+        }
     }
 
-    pub fn get_elapsed_time_ns(&self) -> u128 {
-        self.elapsed_time_ns
+    pub fn get_elapsed_time(&self) -> Duration {
+        let elapsed_time: Duration = self.time.elapsed();
+        elapsed_time
     }
 }
 
-impl SearchProgress {
-    fn update_elapsed_time_ns(&mut self) {
-        let elapsed_time_ns: u128 = self.time.elapsed().as_nanos();
-        self.elapsed_time_ns = elapsed_time_ns;
+impl SearchMetrics {
+    fn update_display_time(&self) {
+        if let Ok(mut display_time) = self.display_time.write() {
+            *display_time = Instant::now();
+        }
     }
 
-    fn write_progress(&mut self) {
-        let size_string: String = format_size(self.search_bytes);
+    fn get_elapsed_display_time(&self) -> Duration {
+        if let Ok(display_time) = self.display_time.read() {
+            let elapsed_time: Duration = display_time.elapsed();
+            return elapsed_time;
+        }
+        Duration::from_secs(0)
+    }
 
-        self.update_elapsed_time_ns();
-        let time_string: String = format_time(self.get_elapsed_time_ns());
+    fn write_progress(&self, ordering: Ordering) {
+        let search_bytes: usize = self.metrics.search_bytes.load(ordering);
+        let match_counter: usize = self.metrics.match_counter.load(ordering);
+        let search_counter: usize = self.metrics.search_counter.load(ordering);
+        let threads: usize = self.metrics.threads.load(ordering);
 
-        self.table.add_parameter("Match", self.match_counter);
-        self.table.add_parameter("Search", self.search_counter);
-        self.table.add_parameter_string("Size", &size_string);
-        self.table.add_parameter_string("Time", &time_string);
+        let size_string: String = format_size(search_bytes);
+        let time_string: String = format_time(self.get_elapsed_time().as_nanos());
 
-        let table_string: String = self.table.get_table_string();
-        self.writer.write(&table_string);
+        if let Ok(mut table) = self.table.lock() {
+            table.add_parameter("Match", match_counter);
+            table.add_parameter("Search", search_counter);
+            table.add_parameter_string("Size", &size_string);
+            table.add_parameter("Threads", threads);
+            table.add_parameter_string("Time", &time_string);
+
+            let table_string: String = table.get_table_string();
+            if let Ok(mut writer) = self.writer.lock() {
+                writer.write(&table_string);
+            }
+        }
     }
 
     fn get_path_string(&self, path: &PathBuf) -> String {

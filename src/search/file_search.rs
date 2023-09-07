@@ -6,11 +6,16 @@ use std::fs::DirEntry;
 use std::fs::{Metadata, ReadDir};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
 use regex::Regex;
 
 use crate::search::info::FileInfo;
-use crate::search::progress::SearchProgress;
+use crate::search::progress::{ProgressMetrics, SearchMetrics};
+use crate::threading::thread_manager::{ThreadLoopWorker, ThreadManager};
+use crate::threading::thread_structs::AtomicChannel;
 
 pub struct FileSearch {
     root: Option<PathBuf>,
@@ -109,44 +114,6 @@ impl FileSearch {
     pub fn clear_exclude_directories(&mut self) {
         self.exclude_dirs = HashSet::new();
     }
-
-    pub fn search_files(&self) -> HashSet<FileInfo> {
-        let mut files: HashSet<FileInfo> = HashSet::new();
-        let mut queue: LinkedList<PathBuf> = LinkedList::new();
-        let mut search_progress: SearchProgress = SearchProgress::new();
-
-        let root: Result<PathBuf, io::Error> = self.get_root_path();
-        if let Ok(root) = root {
-            search_progress.set_search_path(&root);
-            queue.push_back(root);
-
-            while let Some(current_dir) = queue.pop_front() {
-                self.walker(&current_dir, &mut files, &mut queue, &mut search_progress);
-            }
-            search_progress.display_progress_finalize();
-        }
-
-        files
-    }
-
-    pub fn search_files_benchmark(&self) -> SearchProgress {
-        let mut files: HashSet<FileInfo> = HashSet::new();
-        let mut queue: LinkedList<PathBuf> = LinkedList::new();
-        let mut search_progress: SearchProgress = SearchProgress::new();
-
-        let root: Result<PathBuf, io::Error> = self.get_root_path();
-        if let Ok(root) = root {
-            search_progress.set_search_path(&root);
-            queue.push_back(root);
-
-            while let Some(current_dir) = queue.pop_front() {
-                self.walker(&current_dir, &mut files, &mut queue, &mut search_progress);
-            }
-
-            search_progress.display_progress_finalize();
-        }
-        search_progress
-    }
 }
 
 impl FileSearch {
@@ -233,9 +200,11 @@ impl FileSearch {
         let filename: &OsStr = path.file_name().unwrap_or_default();
         let filename: String = filename.to_string_lossy().to_lowercase();
 
-        let regex: &Regex = self.exclusive_filename_regex.as_ref().unwrap();
-        let is_match: bool = regex.is_match(&filename);
-        is_match
+        if let Some(regex) = self.exclusive_filename_regex.as_ref() {
+            let is_match: bool = regex.is_match(&filename);
+            return is_match;
+        }
+        false
     }
 
     fn is_exclusive_extension(&self, path: &PathBuf) -> bool {
@@ -271,17 +240,18 @@ impl FileSearch {
         metadata: Metadata,
         file: PathBuf,
         files: &mut HashSet<FileInfo>,
-        search_progress: &mut SearchProgress,
+        search_metrics: &Arc<SearchMetrics>,
     ) -> bool {
         let entry_criteria: bool = self.evaluate_entry_criteria(&file);
 
-        search_progress.increment_search_count();
-        search_progress.add_search_bytes(&metadata);
+        let progress_metrics: Arc<ProgressMetrics> = search_metrics.get_metrics();
+        progress_metrics.increment_search_count();
+        progress_metrics.add_search_bytes(&metadata);
 
         if !files.contains(&file) && entry_criteria {
             let file_info: FileInfo = FileInfo::new(file, metadata);
             files.insert(file_info);
-            search_progress.increment_match_count();
+            progress_metrics.increment_match_count();
             return true;
         }
         false
@@ -291,51 +261,293 @@ impl FileSearch {
         &self,
         entry: &DirEntry,
         files: &mut HashSet<FileInfo>,
-        sub_directories: &mut LinkedList<PathBuf>,
-        search_progress: &mut SearchProgress,
+        queue: &mut LinkedList<PathBuf>,
+        search_metrics: &Arc<SearchMetrics>,
     ) -> bool {
         if let Ok(metadata) = entry.metadata() {
-            search_progress.display_progress();
             let path: PathBuf = entry.path();
 
             if metadata.is_dir() {
-                sub_directories.push_back(path);
+                queue.push_back(path);
             } else if metadata.is_file() {
-                let is_match: bool = self.handle_file(metadata, path, files, search_progress);
+                let is_match: bool = self.handle_file(metadata, path, files, search_metrics);
                 return is_match;
             }
         }
         false
     }
 
-    fn walker(
+    fn send_to_queue_channel(
         &self,
+        queue: LinkedList<PathBuf>,
+        queue_channel: &Arc<AtomicChannel<LinkedList<PathBuf>>>,
+    ) {
+        if !queue.is_empty() {
+            let timeout: Duration = Duration::from_millis(1);
+            let _ = queue_channel.send_timeout(queue, timeout);
+        }
+    }
+
+    fn send_to_files_channel(
+        &self,
+        files: HashSet<FileInfo>,
+        files_channel: &Arc<AtomicChannel<HashSet<FileInfo>>>,
+    ) {
+        if !files.is_empty() {
+            let timeout: Duration = Duration::from_millis(1);
+            let _ = files_channel.send_timeout(files, timeout);
+        }
+    }
+
+    fn walker(
+        self: &Arc<Self>,
         root: &PathBuf,
         files: &mut HashSet<FileInfo>,
-        queue: &mut LinkedList<PathBuf>,
-        search_progress: &mut SearchProgress,
+        queue_channel: &Arc<AtomicChannel<LinkedList<PathBuf>>>,
+        search_metrics: &Arc<SearchMetrics>,
     ) {
-        if self.is_excluded_directory(&root) {
-            return;
-        }
-
         let entries: ReadDir = match root.read_dir() {
             Ok(entries) => entries,
             Err(_) => return,
         };
-
-        let mut sub_directories: LinkedList<PathBuf> = LinkedList::new();
+        let mut queue: LinkedList<PathBuf> = LinkedList::new();
 
         for entry in entries {
             if let Ok(entry) = entry.as_ref() {
-                let is_match: bool =
-                    self.handle_entry(entry, files, &mut sub_directories, search_progress);
+                let is_match = self.handle_entry(entry, files, &mut queue, search_metrics);
                 if is_match && self.quit_directory_on_match {
                     return;
                 }
             }
         }
 
-        queue.append(&mut sub_directories);
+        self.send_to_queue_channel(queue, queue_channel);
+    }
+
+    fn batch_walker(
+        self: &Arc<Self>,
+        batch: Vec<PathBuf>,
+        files_channel: &Arc<AtomicChannel<HashSet<FileInfo>>>,
+        queue_channel: &Arc<AtomicChannel<LinkedList<PathBuf>>>,
+        search_metrics: &Arc<SearchMetrics>,
+    ) {
+        let mut files_batch: HashSet<FileInfo> = HashSet::new();
+
+        for root in batch.iter() {
+            if !self.is_excluded_directory(&root) {
+                self.walker(&root, &mut files_batch, queue_channel, search_metrics);
+            }
+        }
+        self.send_to_files_channel(files_batch, files_channel);
+    }
+}
+
+struct SearchActivity {
+    active_threads: usize,
+    job_queue: usize,
+    queue_buffer: usize,
+    queue: usize,
+}
+
+impl SearchActivity {
+    fn new(active_threads: usize, job_queue: usize, queue_buffer: usize, queue: usize) -> Self {
+        SearchActivity {
+            active_threads,
+            job_queue,
+            queue_buffer,
+            queue,
+        }
+    }
+
+    fn all_empty(&self) -> bool {
+        if self.active_threads == 0
+            && self.job_queue == 0
+            && self.queue_buffer == 0
+            && self.queue == 0
+        {
+            return true;
+        }
+        false
+    }
+}
+
+pub struct SearchThreadScheduler {
+    batch_size: usize,
+    file_search: Arc<FileSearch>,
+    files_channel: Arc<AtomicChannel<HashSet<FileInfo>>>,
+    queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>>,
+    thread_manager: ThreadManager,
+    display_thread_worker: ThreadLoopWorker,
+}
+
+impl SearchThreadScheduler {
+    pub fn new(threads: usize, batch_size: usize, file_search: FileSearch) -> Self {
+        let file_search: Arc<FileSearch> = Arc::new(file_search);
+        let files_channel: Arc<AtomicChannel<HashSet<FileInfo>>> = Arc::new(AtomicChannel::new());
+        let queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>> = Arc::new(AtomicChannel::new());
+        let thread_manager: ThreadManager = ThreadManager::new(threads);
+        let display_thread_worker: ThreadLoopWorker = ThreadLoopWorker::new();
+
+        SearchThreadScheduler {
+            batch_size,
+            file_search,
+            files_channel,
+            queue_channel,
+            thread_manager,
+            display_thread_worker,
+        }
+    }
+
+    pub fn search_files(&self) -> HashSet<FileInfo> {
+        let root: Result<PathBuf, io::Error> = self.file_search.get_root_path();
+
+        if let Ok(root) = root {
+            let search_metrics: Arc<SearchMetrics> =
+                Arc::new(SearchMetrics::new(Duration::from_millis(100)));
+            let mut queue: LinkedList<PathBuf> = LinkedList::new();
+            queue.push_back(root);
+
+            self.metrics_display_thread(&search_metrics);
+            self.spawn_walkers(&mut queue, &search_metrics);
+            search_metrics.display_progress_finalize();
+        }
+        let files: HashSet<FileInfo> = self.get_received_files();
+        self.clean_receiver_channels();
+        files
+    }
+
+    pub fn search_files_benchmark(&self) -> Arc<SearchMetrics> {
+        let root: Result<PathBuf, io::Error> = self.file_search.get_root_path();
+        let search_metrics: Arc<SearchMetrics> =
+            Arc::new(SearchMetrics::new(Duration::from_millis(100)));
+        let mut queue: LinkedList<PathBuf> = LinkedList::new();
+
+        if let Ok(root) = root {
+            queue.push_back(root);
+
+            self.metrics_display_thread(&search_metrics);
+            self.spawn_walkers(&mut queue, &search_metrics);
+            search_metrics.display_progress_finalize();
+        }
+
+        let _ = self.get_received_files();
+        self.clean_receiver_channels();
+        search_metrics
+    }
+}
+
+impl SearchThreadScheduler {
+    fn get_received_files(&self) -> HashSet<FileInfo> {
+        let mut files: HashSet<FileInfo> = HashSet::new();
+        while let Ok(mut files_receive) = self.files_channel.try_recv() {
+            for file_info in files_receive.drain() {
+                files.insert(file_info);
+            }
+        }
+        files
+    }
+
+    fn spawn_walkers(&self, queue: &mut LinkedList<PathBuf>, search_metrics: &Arc<SearchMetrics>) {
+        let progress_metrics: Arc<ProgressMetrics> = search_metrics.get_metrics();
+
+        loop {
+            let batch: Vec<PathBuf> = self.get_queue_batch(queue);
+            let _ = self.add_batched_thread(batch, search_metrics);
+
+            let search_activity: SearchActivity = self.get_search_activity(queue.len());
+            progress_metrics.set_threads(search_activity.active_threads);
+
+            self.extend_queue(queue, &search_activity);
+            self.wait_for_job_queue(&search_activity);
+
+            if self.get_halt_condition(&search_activity, queue) {
+                break;
+            }
+        }
+
+        self.display_thread_worker.terminate();
+    }
+
+    fn wait_for_job_queue(&self, search_activity: &SearchActivity) {
+        let job_queue: usize = search_activity.job_queue;
+        if job_queue >= 1000 {
+            thread::sleep(Duration::from_micros(1));
+        }
+    }
+
+    fn metrics_display_thread(&self, search_metrics: &Arc<SearchMetrics>) {
+        let search_metrics: Arc<SearchMetrics> = search_metrics.clone();
+        let closure = move || {
+            search_metrics.blocking_display_progress();
+        };
+        self.display_thread_worker.start(closure);
+    }
+
+    fn get_search_activity(&self, queue: usize) -> SearchActivity {
+        let active_threads: usize = self.thread_manager.get_active_threads();
+        let job_queue: usize = self.thread_manager.get_job_queue();
+        let queue_buffer: usize = self.queue_channel.get_buffer();
+
+        let search_activity: SearchActivity =
+            SearchActivity::new(active_threads, job_queue, queue_buffer, queue);
+        search_activity
+    }
+
+    fn get_halt_condition(
+        &self,
+        search_activity: &SearchActivity,
+        queue: &mut LinkedList<PathBuf>,
+    ) -> bool {
+        if search_activity.all_empty() {
+            thread::sleep(Duration::from_millis(1));
+            let search_activity: SearchActivity = self.get_search_activity(queue.len());
+            if search_activity.all_empty() {
+                self.thread_manager.terminate_all();
+                return true;
+            }
+        }
+        false
+    }
+
+    fn clean_receiver_channels(&self) {
+        self.files_channel.clean_receiver();
+        self.queue_channel.clean_receiver();
+    }
+
+    fn extend_queue(&self, queue: &mut LinkedList<PathBuf>, search_activity: &SearchActivity) {
+        let queue_buffer: usize = search_activity.queue_buffer;
+        for _ in 0..queue_buffer {
+            if let Ok(received) = self.queue_channel.recv() {
+                queue.extend(received);
+            }
+        }
+    }
+
+    fn add_batched_thread(&self, batch: Vec<PathBuf>, search_metrics: &Arc<SearchMetrics>) {
+        if batch.len() > 0 {
+            let search_clone: Arc<FileSearch> = self.file_search.clone();
+            let files_channel: Arc<AtomicChannel<HashSet<FileInfo>>> = self.files_channel.clone();
+            let queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>> = self.queue_channel.clone();
+            let search_metrics: Arc<SearchMetrics> = search_metrics.clone();
+
+            let closure = move || {
+                search_clone.batch_walker(batch, &files_channel, &queue_channel, &search_metrics);
+            };
+
+            self.thread_manager.execute(closure);
+        }
+    }
+
+    fn get_queue_batch(&self, queue: &mut LinkedList<PathBuf>) -> Vec<PathBuf> {
+        let batch_size: usize = self.batch_size;
+        let mut batch: Vec<PathBuf> = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            if let Some(root) = queue.pop_front() {
+                batch.push(root);
+            } else {
+                break;
+            }
+        }
+        batch
     }
 }

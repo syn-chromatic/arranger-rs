@@ -14,8 +14,8 @@ use crate::commands::configuration::SearchSort;
 use crate::general::table_display::DynamicTable;
 use crate::general::table_display::FileInfoTable;
 
+use crate::search::file_search::{FileSearch, SearchThreadScheduler};
 use crate::search::info::FileInfo;
-use crate::search::mt_search::mt_search::{FileSearch, SearchThreadScheduler};
 
 pub struct SearchCommand {
     option: SearchOption,
@@ -171,15 +171,14 @@ impl SearchCommand {
             let files_iterator: Box<dyn Iterator<Item = &FileInfo>> =
                 self.get_files_iterator(files);
             let file_info_printer: FileInfoTable = FileInfoTable::new(2, 0.9);
-            println!();
+
             file_info_printer.print_header("FILES");
             for file_info in files_iterator {
                 file_info_printer.print(file_info);
                 println!();
             }
         } else {
-            self.terminal
-                .writeln_ansi("\nNo files were found.", &RedANSI);
+            self.terminal.writeln_ansi("No files were found.", &RedANSI);
         }
     }
 

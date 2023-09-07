@@ -122,4 +122,10 @@ impl<T> AtomicChannel<T> {
         let receive_buffer: usize = self.buffer.load(Ordering::SeqCst);
         receive_buffer
     }
+
+    pub fn clean_receiver(&self) {
+        while let Ok(value) = self.try_recv() {
+            drop(value);
+        }
+    }
 }
