@@ -1,6 +1,6 @@
 use std::fs::Metadata;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::RwLock;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -57,8 +57,10 @@ pub struct SearchMetrics {
     writer: Arc<Mutex<ConsoleWriter>>,
     metrics: Arc<ProgressMetrics>,
     time: Instant,
+    duration: Arc<Mutex<Duration>>,
     display_time: Arc<RwLock<Instant>>,
     display_interval: Duration,
+    terminated: AtomicBool,
 }
 
 impl SearchMetrics {
@@ -69,20 +71,42 @@ impl SearchMetrics {
         let writer: Arc<Mutex<ConsoleWriter>> = Arc::new(Mutex::new(writer));
         let metrics: Arc<ProgressMetrics> = Arc::new(ProgressMetrics::new());
         let time: Instant = Instant::now();
+        let duration: Arc<Mutex<Duration>> = Arc::new(Mutex::new(Duration::from_secs(0)));
         let display_time: Arc<RwLock<Instant>> = Arc::new(RwLock::new(Instant::now()));
+        let terminated: AtomicBool = AtomicBool::new(false);
 
         SearchMetrics {
             table,
             writer,
             metrics,
             time,
+            duration,
             display_time,
             display_interval,
+            terminated,
         }
     }
 
     pub fn get_metrics(&self) -> Arc<ProgressMetrics> {
         self.metrics.clone()
+    }
+
+    pub fn get_duration(&self) -> Duration {
+        let duration: Duration = self.time.elapsed();
+        if let Ok(mut duration_guard) = self.duration.lock() {
+            if self.terminated.load(Ordering::SeqCst) {
+                return *duration_guard;
+            }
+            *duration_guard = duration;
+        }
+        duration
+    }
+
+    pub fn set_search_path(&mut self, path: &PathBuf) {
+        let path_string: String = self.get_path_string(&path);
+        if let Ok(mut table) = self.table.lock() {
+            table.add_parameter_string("Path", &path_string);
+        }
     }
 
     pub fn display_progress(&self) {
@@ -104,7 +128,7 @@ impl SearchMetrics {
         thread::sleep(self.display_interval);
     }
 
-    pub fn display_progress_finalize(&self) {
+    pub fn finalize(&self) {
         self.write_progress(Ordering::SeqCst);
         if let Ok(mut writer) = self.writer.lock() {
             writer.go_to_end();
@@ -113,16 +137,8 @@ impl SearchMetrics {
         println!();
     }
 
-    pub fn set_search_path(&mut self, path: &PathBuf) {
-        let path_string: String = self.get_path_string(&path);
-        if let Ok(mut table) = self.table.lock() {
-            table.add_parameter_string("Path", &path_string);
-        }
-    }
-
-    pub fn get_elapsed_time(&self) -> Duration {
-        let elapsed_time: Duration = self.time.elapsed();
-        elapsed_time
+    pub fn terminate(&self) {
+        self.terminated.store(true, Ordering::SeqCst);
     }
 }
 
@@ -148,7 +164,7 @@ impl SearchMetrics {
         let threads: usize = self.metrics.threads.load(ordering);
 
         let size_string: String = format_size(search_bytes);
-        let time_string: String = format_time(self.get_elapsed_time().as_nanos());
+        let time_string: String = format_time(self.get_duration().as_nanos());
 
         if let Ok(mut table) = self.table.lock() {
             table.add_parameter("Match", match_counter);

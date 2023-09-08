@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::io;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use crate::general::path::WPath;
 use crate::general::shell::{CommandExecute, CommandResponse};
@@ -251,7 +252,8 @@ impl VirtualEnvSearch {
         let search_scheduler: SearchThreadScheduler =
             SearchThreadScheduler::new(threads, batch_size, file_search);
 
-        let files: HashSet<FileInfo> = search_scheduler.search_files();
+        let update_rate: Duration = Duration::from_millis(10);
+        let files: HashSet<FileInfo> = search_scheduler.search_files(update_rate);
         files
     }
 

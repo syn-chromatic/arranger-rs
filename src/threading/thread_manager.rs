@@ -29,11 +29,11 @@ impl ThreadManager {
     where
         F: FnOnce() + Send + 'static,
     {
-        if self.terminated.load(Ordering::SeqCst) {
-            self.start_workers();
-        }
         let job: Box<dyn FnOnce() + Send + 'static> = Box::new(f);
         let _ = self.channel.send(job);
+        if self.is_terminated() {
+            self.start_workers();
+        }
     }
 
     pub fn get_active_threads(&self) -> usize {
@@ -57,6 +57,11 @@ impl ThreadManager {
         }
         self.terminated.store(true, Ordering::SeqCst);
         self.clear_receiver_channel();
+    }
+
+    pub fn is_terminated(&self) -> bool {
+        let is_terminated: bool = self.terminated.load(Ordering::SeqCst);
+        is_terminated
     }
 
     pub fn clear_receiver_channel(&self) {
@@ -90,7 +95,7 @@ impl ThreadManager {
 
 pub struct ThreadWorker {
     id: usize,
-    thread: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
+    thread: Mutex<Option<thread::JoinHandle<()>>>,
     channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>,
     is_active: Arc<AtomicBool>,
     terminate_signal: Arc<AtomicBool>,
@@ -98,7 +103,7 @@ pub struct ThreadWorker {
 
 impl ThreadWorker {
     pub fn new(id: usize, channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>) -> ThreadWorker {
-        let thread: Arc<Mutex<Option<thread::JoinHandle<()>>>> = Arc::new(Mutex::new(None));
+        let thread: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
@@ -116,20 +121,20 @@ impl ThreadWorker {
     }
 
     pub fn start(&self) {
-        let worker_loop = self.get_worker_loop();
-        let thread: thread::JoinHandle<()> = thread::spawn(move || worker_loop());
-        if let Ok(mut thread_guard) = self.thread.lock() {
-            *thread_guard = Some(thread);
+        if !self.is_active() {
+            let worker_loop = self.get_worker_loop();
+            let thread: thread::JoinHandle<()> = thread::spawn(move || worker_loop());
+            if let Ok(mut thread_guard) = self.thread.lock() {
+                *thread_guard = Some(thread);
+            }
         }
     }
 
     pub fn terminate(&self) {
         self.terminate_signal.store(true, Ordering::SeqCst);
-        if let Ok(thread_option) = self.thread.lock() {
-            if let Some(thread) = thread_option.as_ref() {
-                while !thread.is_finished() {
-                    thread::sleep(Duration::from_micros(1));
-                }
+        if let Ok(mut thread_option) = self.thread.lock() {
+            if let Some(thread) = thread_option.take() {
+                let _ = thread.join();
             }
         }
         self.terminate_signal.store(false, Ordering::SeqCst);
@@ -148,17 +153,15 @@ impl ThreadWorker {
         let terminate_signal: Arc<AtomicBool> = self.terminate_signal.clone();
 
         let worker_loop = move || {
+            is_active.store(true, Ordering::SeqCst);
             loop {
                 if terminate_signal.load(Ordering::SeqCst) {
-                    is_active.store(false, Ordering::SeqCst);
                     break;
                 }
 
                 let job: Result<Box<dyn FnOnce() + Send>, mpsc::TryRecvError> = channel.try_recv();
                 if let Ok(job) = job {
-                    is_active.store(true, Ordering::SeqCst);
                     job();
-                    is_active.store(false, Ordering::SeqCst);
                 } else {
                     thread::sleep(Duration::from_micros(1));
                 }
@@ -170,14 +173,14 @@ impl ThreadWorker {
 }
 
 pub struct ThreadLoopWorker {
-    thread: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
+    thread: Mutex<Option<thread::JoinHandle<()>>>,
     is_active: Arc<AtomicBool>,
     terminate_signal: Arc<AtomicBool>,
 }
 
 impl ThreadLoopWorker {
     pub fn new() -> ThreadLoopWorker {
-        let thread: Arc<Mutex<Option<thread::JoinHandle<()>>>> = Arc::new(Mutex::new(None));
+        let thread: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
@@ -192,20 +195,20 @@ impl ThreadLoopWorker {
     where
         F: Fn() + Send + 'static,
     {
-        let worker_loop = self.get_worker_loop(f);
-        let thread: thread::JoinHandle<()> = thread::spawn(move || worker_loop());
-        if let Ok(mut thread_guard) = self.thread.lock() {
-            *thread_guard = Some(thread);
+        if !self.is_active() {
+            let worker_loop = self.get_worker_loop(f);
+            let thread: thread::JoinHandle<()> = thread::spawn(move || worker_loop());
+            if let Ok(mut thread_guard) = self.thread.lock() {
+                *thread_guard = Some(thread);
+            }
         }
     }
 
     pub fn terminate(&self) {
         self.terminate_signal.store(true, Ordering::SeqCst);
-        if let Ok(thread_option) = self.thread.lock() {
-            if let Some(thread) = thread_option.as_ref() {
-                while !thread.is_finished() {
-                    thread::sleep(Duration::from_micros(1));
-                }
+        if let Ok(mut thread_option) = self.thread.lock() {
+            if let Some(thread) = thread_option.take() {
+                let _ = thread.join();
             }
         }
         self.terminate_signal.store(false, Ordering::SeqCst);
@@ -226,15 +229,13 @@ impl ThreadLoopWorker {
         let terminate_signal: Arc<AtomicBool> = self.terminate_signal.clone();
 
         let worker_loop = move || {
+            is_active.store(true, Ordering::SeqCst);
             loop {
-                is_active.store(true, Ordering::SeqCst);
                 if terminate_signal.load(Ordering::SeqCst) {
-                    is_active.store(false, Ordering::SeqCst);
                     break;
                 }
                 job();
             }
-
             is_active.store(false, Ordering::SeqCst);
         };
         worker_loop

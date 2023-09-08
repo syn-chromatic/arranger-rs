@@ -360,11 +360,7 @@ impl SearchActivity {
     }
 
     fn all_empty(&self) -> bool {
-        if self.active_threads == 0
-            && self.job_queue == 0
-            && self.queue_buffer == 0
-            && self.queue == 0
-        {
+        if self.job_queue == 0 && self.queue_buffer == 0 && self.queue == 0 {
             return true;
         }
         false
@@ -377,7 +373,7 @@ pub struct SearchThreadScheduler {
     files_channel: Arc<AtomicChannel<HashSet<FileInfo>>>,
     queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>>,
     thread_manager: ThreadManager,
-    display_thread_worker: ThreadLoopWorker,
+    metrics_thread_worker: ThreadLoopWorker,
 }
 
 impl SearchThreadScheduler {
@@ -386,7 +382,7 @@ impl SearchThreadScheduler {
         let files_channel: Arc<AtomicChannel<HashSet<FileInfo>>> = Arc::new(AtomicChannel::new());
         let queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>> = Arc::new(AtomicChannel::new());
         let thread_manager: ThreadManager = ThreadManager::new(threads);
-        let display_thread_worker: ThreadLoopWorker = ThreadLoopWorker::new();
+        let metrics_thread_worker: ThreadLoopWorker = ThreadLoopWorker::new();
 
         SearchThreadScheduler {
             batch_size,
@@ -394,32 +390,29 @@ impl SearchThreadScheduler {
             files_channel,
             queue_channel,
             thread_manager,
-            display_thread_worker,
+            metrics_thread_worker,
         }
     }
 
-    pub fn search_files(&self) -> HashSet<FileInfo> {
+    pub fn search_files(&self, update_rate: Duration) -> HashSet<FileInfo> {
         let root: Result<PathBuf, io::Error> = self.file_search.get_root_path();
 
         if let Ok(root) = root {
-            let search_metrics: Arc<SearchMetrics> =
-                Arc::new(SearchMetrics::new(Duration::from_millis(100)));
+            let search_metrics: Arc<SearchMetrics> = Arc::new(SearchMetrics::new(update_rate));
             let mut queue: LinkedList<PathBuf> = LinkedList::new();
             queue.push_back(root);
 
             self.metrics_display_thread(&search_metrics);
             self.spawn_walkers(&mut queue, &search_metrics);
-            search_metrics.display_progress_finalize();
         }
         let files: HashSet<FileInfo> = self.get_received_files();
         self.clean_receiver_channels();
         files
     }
 
-    pub fn search_files_benchmark(&self) -> Arc<SearchMetrics> {
+    pub fn search_files_benchmark(&self, update_rate: Duration) -> Arc<SearchMetrics> {
         let root: Result<PathBuf, io::Error> = self.file_search.get_root_path();
-        let search_metrics: Arc<SearchMetrics> =
-            Arc::new(SearchMetrics::new(Duration::from_millis(100)));
+        let search_metrics: Arc<SearchMetrics> = Arc::new(SearchMetrics::new(update_rate));
         let mut queue: LinkedList<PathBuf> = LinkedList::new();
 
         if let Ok(root) = root {
@@ -427,7 +420,6 @@ impl SearchThreadScheduler {
 
             self.metrics_display_thread(&search_metrics);
             self.spawn_walkers(&mut queue, &search_metrics);
-            search_metrics.display_progress_finalize();
         }
 
         let _ = self.get_received_files();
@@ -465,7 +457,20 @@ impl SearchThreadScheduler {
             }
         }
 
-        self.display_thread_worker.terminate();
+        self.finalize(search_metrics, &progress_metrics);
+    }
+
+    fn finalize(
+        &self,
+        search_metrics: &Arc<SearchMetrics>,
+        progress_metrics: &Arc<ProgressMetrics>,
+    ) {
+        search_metrics.terminate();
+        self.metrics_thread_worker.terminate();
+
+        let active_threads: usize = self.thread_manager.get_active_threads();
+        progress_metrics.set_threads(active_threads);
+        search_metrics.finalize();
     }
 
     fn wait_for_job_queue(&self, search_activity: &SearchActivity) {
@@ -480,7 +485,7 @@ impl SearchThreadScheduler {
         let closure = move || {
             search_metrics.blocking_display_progress();
         };
-        self.display_thread_worker.start(closure);
+        self.metrics_thread_worker.start(closure);
     }
 
     fn get_search_activity(&self, queue: usize) -> SearchActivity {
