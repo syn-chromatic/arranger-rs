@@ -13,7 +13,7 @@ pub struct ThreadManager {
 }
 
 impl ThreadManager {
-    pub fn new(size: usize) -> ThreadManager {
+    pub fn new(size: usize) -> Self {
         let channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>> = Arc::new(AtomicChannel::new());
         let workers: Vec<ThreadWorker> = Self::get_workers(size, channel.clone());
         let terminated: AtomicBool = AtomicBool::new(true);
@@ -102,7 +102,7 @@ pub struct ThreadWorker {
 }
 
 impl ThreadWorker {
-    pub fn new(id: usize, channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>) -> ThreadWorker {
+    pub fn new(id: usize, channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>) -> Self {
         let thread: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
@@ -159,11 +159,15 @@ impl ThreadWorker {
                     break;
                 }
 
-                let job: Result<Box<dyn FnOnce() + Send>, mpsc::TryRecvError> = channel.try_recv();
-                if let Ok(job) = job {
-                    job();
+                let job_queue: usize = channel.get_buffer();
+                if job_queue > 0 {
+                    let job: Result<Box<dyn FnOnce() + Send>, mpsc::TryRecvError> =
+                        channel.try_recv();
+                    if let Ok(job) = job {
+                        job();
+                    }
                 } else {
-                    thread::sleep(Duration::from_micros(1));
+                    thread::sleep(Duration::from_millis(1));
                 }
             }
             is_active.store(false, Ordering::SeqCst);
@@ -179,7 +183,7 @@ pub struct ThreadLoopWorker {
 }
 
 impl ThreadLoopWorker {
-    pub fn new() -> ThreadLoopWorker {
+    pub fn new() -> Self {
         let thread: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));

@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Mutex, RwLock};
 use std::time::{Duration, Instant};
 
 pub struct RwUsize {
@@ -55,16 +55,16 @@ impl RwUsize {
 }
 
 pub struct AtomicChannel<T> {
-    sender: Arc<Mutex<mpsc::Sender<T>>>,
-    receiver: Arc<Mutex<mpsc::Receiver<T>>>,
+    sender: Mutex<mpsc::Sender<T>>,
+    receiver: Mutex<mpsc::Receiver<T>>,
     buffer: AtomicUsize,
 }
 
 impl<T> AtomicChannel<T> {
     pub fn new() -> Self {
         let (sender, receiver): (mpsc::Sender<T>, mpsc::Receiver<T>) = mpsc::channel();
-        let sender: Arc<Mutex<mpsc::Sender<T>>> = Arc::new(Mutex::new(sender));
-        let receiver: Arc<Mutex<mpsc::Receiver<T>>> = Arc::new(Mutex::new(receiver));
+        let sender: Mutex<mpsc::Sender<T>> = Mutex::new(sender);
+        let receiver: Mutex<mpsc::Receiver<T>> = Mutex::new(receiver);
         let buffer: AtomicUsize = AtomicUsize::new(0);
 
         AtomicChannel {
