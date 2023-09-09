@@ -14,7 +14,7 @@ use regex::Regex;
 
 use crate::search::info::FileInfo;
 use crate::search::progress::{ProgressMetrics, SearchMetrics};
-use crate::threading::thread_manager::{ThreadLoopWorker, ThreadManager};
+use crate::threading::thread_manager::{ThreadLoop, ThreadManager};
 use crate::threading::thread_structs::AtomicChannel;
 
 pub struct FileSearch {
@@ -373,7 +373,7 @@ pub struct SearchThreadScheduler {
     files_channel: Arc<AtomicChannel<HashSet<FileInfo>>>,
     queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>>,
     thread_manager: ThreadManager,
-    metrics_thread_worker: ThreadLoopWorker,
+    metrics_thread_worker: ThreadLoop,
 }
 
 impl SearchThreadScheduler {
@@ -382,7 +382,7 @@ impl SearchThreadScheduler {
         let files_channel: Arc<AtomicChannel<HashSet<FileInfo>>> = Arc::new(AtomicChannel::new());
         let queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>> = Arc::new(AtomicChannel::new());
         let thread_manager: ThreadManager = ThreadManager::new(threads);
-        let metrics_thread_worker: ThreadLoopWorker = ThreadLoopWorker::new();
+        let metrics_thread_worker: ThreadLoop = ThreadLoop::new();
 
         SearchThreadScheduler {
             batch_size,

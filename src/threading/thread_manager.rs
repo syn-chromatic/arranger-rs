@@ -123,7 +123,7 @@ impl ThreadWorker {
     pub fn start(&self) {
         if !self.is_active() {
             let worker_loop = self.get_worker_loop();
-            let thread: thread::JoinHandle<()> = thread::spawn(move || worker_loop());
+            let thread: thread::JoinHandle<()> = thread::spawn(worker_loop);
             if let Ok(mut thread_guard) = self.thread.lock() {
                 *thread_guard = Some(thread);
             }
@@ -176,19 +176,19 @@ impl ThreadWorker {
     }
 }
 
-pub struct ThreadLoopWorker {
+pub struct ThreadLoop {
     thread: Mutex<Option<thread::JoinHandle<()>>>,
     is_active: Arc<AtomicBool>,
     terminate_signal: Arc<AtomicBool>,
 }
 
-impl ThreadLoopWorker {
+impl ThreadLoop {
     pub fn new() -> Self {
         let thread: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
-        ThreadLoopWorker {
+        ThreadLoop {
             thread,
             is_active,
             terminate_signal,
@@ -200,8 +200,8 @@ impl ThreadLoopWorker {
         F: Fn() + Send + 'static,
     {
         if !self.is_active() {
-            let worker_loop = self.get_worker_loop(f);
-            let thread: thread::JoinHandle<()> = thread::spawn(move || worker_loop());
+            let thread_loop = self.get_thread_loop(f);
+            let thread: thread::JoinHandle<()> = thread::spawn(thread_loop);
             if let Ok(mut thread_guard) = self.thread.lock() {
                 *thread_guard = Some(thread);
             }
@@ -224,8 +224,8 @@ impl ThreadLoopWorker {
     }
 }
 
-impl ThreadLoopWorker {
-    pub fn get_worker_loop<F>(&self, job: F) -> impl Fn()
+impl ThreadLoop {
+    fn get_thread_loop<F>(&self, job: F) -> impl Fn()
     where
         F: Fn() + Send + 'static,
     {
