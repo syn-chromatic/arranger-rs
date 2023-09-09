@@ -449,7 +449,6 @@ impl SearchThreadScheduler {
 
             let search_activity: SearchActivity = self.get_search_activity(queue.len());
             progress_metrics.set_threads(search_activity.active_threads);
-            progress_metrics.set_job_queue(search_activity.job_queue);
 
             self.extend_queue(queue, &search_activity);
             self.wait_for_job_queue(&search_activity);
