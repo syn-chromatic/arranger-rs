@@ -17,6 +17,7 @@ pub struct ProgressMetrics {
     match_counter: AtomicUsize,
     search_bytes: AtomicUsize,
     threads: AtomicUsize,
+    job_queue: AtomicUsize,
 }
 
 impl ProgressMetrics {
@@ -25,12 +26,14 @@ impl ProgressMetrics {
         let match_counter: AtomicUsize = AtomicUsize::new(0);
         let search_bytes: AtomicUsize = AtomicUsize::new(0);
         let threads: AtomicUsize = AtomicUsize::new(0);
+        let job_queue: AtomicUsize = AtomicUsize::new(0);
 
         ProgressMetrics {
             search_counter,
             match_counter,
             search_bytes,
             threads,
+            job_queue,
         }
     }
 
@@ -49,6 +52,10 @@ impl ProgressMetrics {
 
     pub fn set_threads(&self, threads: usize) {
         self.threads.store(threads, Ordering::Relaxed);
+    }
+
+    pub fn set_job_queue(&self, job_queue: usize) {
+        self.job_queue.store(job_queue, Ordering::SeqCst);
     }
 }
 
@@ -162,6 +169,7 @@ impl SearchMetrics {
         let match_counter: usize = self.metrics.match_counter.load(ordering);
         let search_counter: usize = self.metrics.search_counter.load(ordering);
         let threads: usize = self.metrics.threads.load(ordering);
+        let job_queue: usize = self.metrics.job_queue.load(ordering);
 
         let size_string: String = format_size(search_bytes);
         let time_string: String = format_time(self.get_duration().as_nanos());
@@ -171,6 +179,7 @@ impl SearchMetrics {
             table.add_parameter("Search", search_counter);
             table.add_parameter_string("Size", &size_string);
             table.add_parameter("Threads", threads);
+            table.add_parameter("Job Queue", job_queue);
             table.add_parameter_string("Time", &time_string);
 
             let table_string: String = table.get_table_string();

@@ -45,7 +45,7 @@ impl SearchCommand {
             let search_scheduler: SearchThreadScheduler =
                 SearchThreadScheduler::new(threads, batch_size, file_search);
 
-            let update_rate: Duration = Duration::from_millis(10);
+            let update_rate: Duration = Duration::from_millis(50);
             let mut files_hashset: HashSet<FileInfo> = search_scheduler.search_files(update_rate);
             let mut files: Vec<FileInfo> = files_hashset.drain().collect();
             self.sort_files(&mut files);

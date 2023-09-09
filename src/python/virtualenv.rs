@@ -252,7 +252,7 @@ impl VirtualEnvSearch {
         let search_scheduler: SearchThreadScheduler =
             SearchThreadScheduler::new(threads, batch_size, file_search);
 
-        let update_rate: Duration = Duration::from_millis(10);
+        let update_rate: Duration = Duration::from_millis(50);
         let files: HashSet<FileInfo> = search_scheduler.search_files(update_rate);
         files
     }

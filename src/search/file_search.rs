@@ -369,6 +369,7 @@ impl SearchActivity {
 
 pub struct SearchThreadScheduler {
     batch_size: usize,
+    threads: usize,
     file_search: Arc<FileSearch>,
     files_channel: Arc<AtomicChannel<HashSet<FileInfo>>>,
     queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>>,
@@ -386,6 +387,7 @@ impl SearchThreadScheduler {
 
         SearchThreadScheduler {
             batch_size,
+            threads,
             file_search,
             files_channel,
             queue_channel,
@@ -448,6 +450,7 @@ impl SearchThreadScheduler {
 
             let search_activity: SearchActivity = self.get_search_activity(queue.len());
             progress_metrics.set_threads(search_activity.active_threads);
+            progress_metrics.set_job_queue(search_activity.job_queue);
 
             self.extend_queue(queue, &search_activity);
             self.wait_for_job_queue(&search_activity);
@@ -475,7 +478,7 @@ impl SearchThreadScheduler {
 
     fn wait_for_job_queue(&self, search_activity: &SearchActivity) {
         let job_queue: usize = search_activity.job_queue;
-        if job_queue >= 1000 {
+        if job_queue >= self.threads * 2 {
             thread::sleep(Duration::from_micros(1));
         }
     }
