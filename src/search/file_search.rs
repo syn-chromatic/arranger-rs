@@ -14,8 +14,7 @@ use regex::Regex;
 
 use crate::search::info::FileInfo;
 use crate::search::progress::{ProgressMetrics, SearchMetrics};
-use crate::threading::thread_manager::{ThreadLoop, ThreadManager};
-use crate::threading::thread_structs::AtomicChannel;
+use crate::threading::{AtomicChannel, ThreadLoop, ThreadManager};
 
 pub struct FileSearch {
     root: Option<PathBuf>,
