@@ -342,16 +342,16 @@ impl FileSearch {
 }
 
 struct SearchActivity {
-    active_threads: usize,
+    busy_threads: usize,
     job_queue: usize,
     queue_buffer: usize,
     queue: usize,
 }
 
 impl SearchActivity {
-    fn new(active_threads: usize, job_queue: usize, queue_buffer: usize, queue: usize) -> Self {
+    fn new(busy_threads: usize, job_queue: usize, queue_buffer: usize, queue: usize) -> Self {
         SearchActivity {
-            active_threads,
+            busy_threads,
             job_queue,
             queue_buffer,
             queue,
@@ -359,7 +359,11 @@ impl SearchActivity {
     }
 
     fn all_empty(&self) -> bool {
-        if self.job_queue == 0 && self.queue_buffer == 0 && self.queue == 0 {
+        if self.busy_threads == 0
+            && self.job_queue == 0
+            && self.queue_buffer == 0
+            && self.queue == 0
+        {
             return true;
         }
         false
@@ -448,7 +452,7 @@ impl SearchThreadScheduler {
             let _ = self.add_batched_thread(batch, search_metrics);
 
             let search_activity: SearchActivity = self.get_search_activity(queue.len());
-            progress_metrics.set_threads(search_activity.active_threads);
+            progress_metrics.set_threads(search_activity.busy_threads);
 
             self.extend_queue(queue, &search_activity);
             self.wait_for_job_queue(&search_activity);
@@ -469,8 +473,8 @@ impl SearchThreadScheduler {
         search_metrics.terminate();
         self.metrics_thread_worker.terminate();
 
-        let active_threads: usize = self.thread_manager.get_active_threads();
-        progress_metrics.set_threads(active_threads);
+        let busy_threads: usize = self.thread_manager.get_busy_threads();
+        progress_metrics.set_threads(busy_threads);
         search_metrics.finalize();
     }
 
@@ -490,12 +494,12 @@ impl SearchThreadScheduler {
     }
 
     fn get_search_activity(&self, queue: usize) -> SearchActivity {
-        let active_threads: usize = self.thread_manager.get_active_threads();
+        let busy_threads: usize = self.thread_manager.get_busy_threads();
         let job_queue: usize = self.thread_manager.get_job_queue();
         let queue_buffer: usize = self.queue_channel.get_buffer();
 
         let search_activity: SearchActivity =
-            SearchActivity::new(active_threads, job_queue, queue_buffer, queue);
+            SearchActivity::new(busy_threads, job_queue, queue_buffer, queue);
         search_activity
     }
 

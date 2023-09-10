@@ -4,8 +4,8 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 pub struct AtomicChannel<T> {
-    sender: Mutex<mpsc::Sender<T>>,
-    receiver: Mutex<mpsc::Receiver<T>>,
+    pub sender: Mutex<mpsc::Sender<T>>,
+    pub receiver: Mutex<mpsc::Receiver<T>>,
     buffer: AtomicUsize,
 }
 
@@ -65,6 +65,18 @@ impl<T> AtomicChannel<T> {
             return received_result;
         }
         Err(mpsc::TryRecvError::Disconnected)
+    }
+
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, mpsc::RecvTimeoutError> {
+        if let Ok(receiver_guard) = self.receiver.lock() {
+            let received_result: Result<T, mpsc::RecvTimeoutError> =
+                receiver_guard.recv_timeout(timeout);
+            if received_result.is_ok() {
+                self.buffer.fetch_sub(1, Ordering::SeqCst);
+            }
+            return received_result;
+        }
+        Err(mpsc::RecvTimeoutError::Disconnected)
     }
 
     pub fn get_buffer(&self) -> usize {

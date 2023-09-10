@@ -35,17 +35,17 @@ impl ThreadLoop {
     }
 
     pub fn terminate(&self) {
-        self.terminate_signal.store(true, Ordering::SeqCst);
+        self.terminate_signal.store(true, Ordering::Release);
         if let Ok(mut thread_option) = self.thread.lock() {
             if let Some(thread) = thread_option.take() {
                 let _ = thread.join();
             }
         }
-        self.terminate_signal.store(false, Ordering::SeqCst);
+        self.terminate_signal.store(false, Ordering::Release);
     }
 
     pub fn is_active(&self) -> bool {
-        let is_active: bool = self.is_active.load(Ordering::SeqCst);
+        let is_active: bool = self.is_active.load(Ordering::Acquire);
         is_active
     }
 }
@@ -59,14 +59,14 @@ impl ThreadLoop {
         let terminate_signal: Arc<AtomicBool> = self.terminate_signal.clone();
 
         let worker_loop = move || {
-            is_active.store(true, Ordering::SeqCst);
+            is_active.store(true, Ordering::Release);
             loop {
-                if terminate_signal.load(Ordering::SeqCst) {
+                if terminate_signal.load(Ordering::Acquire) {
                     break;
                 }
                 job();
             }
-            is_active.store(false, Ordering::SeqCst);
+            is_active.store(false, Ordering::Release);
         };
         worker_loop
     }
