@@ -520,8 +520,8 @@ impl SearchThreadScheduler {
     }
 
     fn clean_receiver_channels(&self) {
-        self.files_channel.clean_receiver();
-        self.queue_channel.clean_receiver();
+        self.files_channel.clear_receiver();
+        self.queue_channel.clear_receiver();
     }
 
     fn extend_queue(&self, queue: &mut LinkedList<PathBuf>, search_activity: &SearchActivity) {

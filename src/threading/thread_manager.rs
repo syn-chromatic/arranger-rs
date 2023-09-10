@@ -12,9 +12,9 @@ pub struct ThreadManager {
 }
 
 impl ThreadManager {
-    pub fn new(size: usize) -> Self {
+    pub fn new(threads: usize) -> Self {
         let channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>> = Arc::new(AtomicChannel::new());
-        let workers: Vec<ThreadWorker> = Self::get_workers(size, channel.clone());
+        let workers: Vec<ThreadWorker> = Self::get_workers(threads, channel.clone());
         let is_terminated: AtomicBool = AtomicBool::new(true);
 
         ThreadManager {
@@ -29,10 +29,20 @@ impl ThreadManager {
         F: FnOnce() + Send + 'static,
     {
         let job: Box<dyn FnOnce() + Send + 'static> = Box::new(f);
-        let _ = self.channel.send(job);
+        self.channel
+            .send(job)
+            .expect("Failed to send job to Thread Manager");
+
         if self.is_terminated() {
             self.start_workers();
         }
+    }
+
+    pub fn join(&self) {
+        while self.get_job_queue() > 0 && self.get_busy_threads() > 0 {
+            thread::sleep(Duration::from_micros(1));
+        }
+        self.terminate_all();
     }
 
     pub fn get_active_threads(&self) -> usize {
@@ -60,6 +70,10 @@ impl ThreadManager {
         job_queue
     }
 
+    pub fn clear_job_queue(&self) {
+        self.channel.clear_receiver();
+    }
+
     pub fn terminate_all(&self) {
         for worker in self.workers.iter() {
             worker.send_terminate_signal();
@@ -70,16 +84,12 @@ impl ThreadManager {
         }
 
         self.is_terminated.store(true, Ordering::Release);
-        self.clean_receiver();
+        self.clear_job_queue();
     }
 
     pub fn is_terminated(&self) -> bool {
         let is_terminated: bool = self.is_terminated.load(Ordering::Acquire);
         is_terminated
-    }
-
-    pub fn clean_receiver(&self) {
-        self.channel.clean_receiver();
     }
 }
 

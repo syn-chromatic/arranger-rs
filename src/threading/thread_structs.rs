@@ -84,7 +84,7 @@ impl<T> AtomicChannel<T> {
         receive_buffer
     }
 
-    pub fn clean_receiver(&self) {
+    pub fn clear_receiver(&self) {
         while let Ok(value) = self.try_recv() {
             drop(value);
         }
