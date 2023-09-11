@@ -76,7 +76,7 @@ impl ThreadManager {
 
     pub fn terminate_all(&self) {
         for worker in self.workers.iter() {
-            worker.send_terminate_signal();
+            worker.send_termination_signal();
         }
 
         for worker in self.workers.iter() {
@@ -121,7 +121,7 @@ struct ThreadWorker {
     channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>,
     is_active: Arc<AtomicBool>,
     is_busy: Arc<AtomicBool>,
-    terminate_signal: Arc<AtomicBool>,
+    termination_signal: Arc<AtomicBool>,
 }
 
 impl ThreadWorker {
@@ -129,7 +129,7 @@ impl ThreadWorker {
         let thread: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let is_busy: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-        let terminate_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let termination_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
         ThreadWorker {
             id,
@@ -137,7 +137,7 @@ impl ThreadWorker {
             channel,
             is_active,
             is_busy,
-            terminate_signal,
+            termination_signal,
         }
     }
 
@@ -165,8 +165,8 @@ impl ThreadWorker {
         is_busy
     }
 
-    pub fn send_terminate_signal(&self) {
-        self.terminate_signal.store(true, Ordering::Release);
+    pub fn send_termination_signal(&self) {
+        self.termination_signal.store(true, Ordering::Release);
     }
 
     pub fn wait_for_termination(&self) {
@@ -175,7 +175,7 @@ impl ThreadWorker {
                 let _ = thread.join();
             }
         }
-        self.terminate_signal.store(false, Ordering::Release);
+        self.termination_signal.store(false, Ordering::Release);
     }
 }
 
@@ -184,12 +184,12 @@ impl ThreadWorker {
         let channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>> = self.channel.clone();
         let is_active: Arc<AtomicBool> = self.is_active.clone();
         let is_busy: Arc<AtomicBool> = self.is_busy.clone();
-        let terminate_signal: Arc<AtomicBool> = self.terminate_signal.clone();
+        let termination_signal: Arc<AtomicBool> = self.termination_signal.clone();
 
         let worker_loop = move || {
             let recv_timeout: Duration = Duration::from_micros(1);
             is_active.store(true, Ordering::Release);
-            while !terminate_signal.load(Ordering::Acquire) {
+            while !termination_signal.load(Ordering::Acquire) {
                 if let Ok(job) = channel.recv_timeout(recv_timeout) {
                     is_busy.store(true, Ordering::Release);
                     job();

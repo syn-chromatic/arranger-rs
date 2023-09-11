@@ -37,7 +37,7 @@ impl<T> AtomicChannel<T> {
     pub fn send_timeout(&self, mut value: T, timeout: Duration) -> Result<(), mpsc::SendError<T>> {
         let now: Instant = Instant::now();
         while let Err(error) = self.send(value) {
-            if now.elapsed() == timeout {
+            if now.elapsed() >= timeout {
                 return Err(error);
             }
             value = error.0;
