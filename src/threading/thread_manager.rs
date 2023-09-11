@@ -12,9 +12,9 @@ pub struct ThreadManager {
 }
 
 impl ThreadManager {
-    pub fn new(threads: usize) -> Self {
+    pub fn new(thread_size: usize) -> Self {
         let channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>> = Arc::new(AtomicChannel::new());
-        let workers: Vec<ThreadWorker> = Self::get_workers(threads, channel.clone());
+        let workers: Vec<ThreadWorker> = Self::get_workers(thread_size, channel.clone());
         let is_terminated: AtomicBool = AtomicBool::new(true);
 
         ThreadManager {
@@ -95,12 +95,12 @@ impl ThreadManager {
 
 impl ThreadManager {
     fn get_workers(
-        size: usize,
+        thread_size: usize,
         channel: Arc<AtomicChannel<Box<dyn FnOnce() + Send>>>,
     ) -> Vec<ThreadWorker> {
-        let mut workers: Vec<ThreadWorker> = Vec::with_capacity(size);
+        let mut workers: Vec<ThreadWorker> = Vec::with_capacity(thread_size);
 
-        for id in 0..size {
+        for id in 0..thread_size {
             let worker: ThreadWorker = ThreadWorker::new(id, channel.clone());
             workers.push(worker);
         }
@@ -189,11 +189,7 @@ impl ThreadWorker {
         let worker_loop = move || {
             let recv_timeout: Duration = Duration::from_micros(1);
             is_active.store(true, Ordering::Release);
-            loop {
-                if terminate_signal.load(Ordering::Acquire) {
-                    break;
-                }
-
+            while !terminate_signal.load(Ordering::Acquire) {
                 if let Ok(job) = channel.recv_timeout(recv_timeout) {
                     is_busy.store(true, Ordering::Release);
                     job();

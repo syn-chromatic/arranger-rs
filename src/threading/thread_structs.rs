@@ -27,7 +27,7 @@ impl<T> AtomicChannel<T> {
         if let Ok(sender_guard) = self.sender.lock() {
             let sent_result: Result<(), mpsc::SendError<T>> = sender_guard.send(value);
             if sent_result.is_ok() {
-                self.buffer.fetch_add(1, Ordering::SeqCst);
+                self.buffer.fetch_add(1, Ordering::Release);
             }
             return sent_result;
         }
@@ -49,7 +49,7 @@ impl<T> AtomicChannel<T> {
         if let Ok(receiver_guard) = self.receiver.lock() {
             let received_result: Result<T, mpsc::RecvError> = receiver_guard.recv();
             if received_result.is_ok() {
-                self.buffer.fetch_sub(1, Ordering::SeqCst);
+                self.buffer.fetch_sub(1, Ordering::Release);
             }
             return received_result;
         }
@@ -60,7 +60,7 @@ impl<T> AtomicChannel<T> {
         if let Ok(receiver_guard) = self.receiver.lock() {
             let received_result: Result<T, mpsc::TryRecvError> = receiver_guard.try_recv();
             if received_result.is_ok() {
-                self.buffer.fetch_sub(1, Ordering::SeqCst);
+                self.buffer.fetch_sub(1, Ordering::Release);
             }
             return received_result;
         }
@@ -72,7 +72,7 @@ impl<T> AtomicChannel<T> {
             let received_result: Result<T, mpsc::RecvTimeoutError> =
                 receiver_guard.recv_timeout(timeout);
             if received_result.is_ok() {
-                self.buffer.fetch_sub(1, Ordering::SeqCst);
+                self.buffer.fetch_sub(1, Ordering::Release);
             }
             return received_result;
         }
@@ -80,7 +80,7 @@ impl<T> AtomicChannel<T> {
     }
 
     pub fn get_buffer(&self) -> usize {
-        let receive_buffer: usize = self.buffer.load(Ordering::SeqCst);
+        let receive_buffer: usize = self.buffer.load(Ordering::Acquire);
         receive_buffer
     }
 
