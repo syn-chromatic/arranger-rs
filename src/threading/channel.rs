@@ -4,8 +4,8 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 pub struct AtomicChannel<T> {
-    pub sender: mpsc::Sender<T>,
-    pub receiver: Mutex<mpsc::Receiver<T>>,
+    sender: mpsc::Sender<T>,
+    receiver: Mutex<mpsc::Receiver<T>>,
     buffer: AtomicUsize,
 }
 

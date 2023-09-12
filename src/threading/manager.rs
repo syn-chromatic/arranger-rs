@@ -145,7 +145,7 @@ struct ThreadWorker {
 }
 
 impl ThreadWorker {
-    pub fn new(id: usize, channel: Arc<AtomicChannel<Job>>) -> Self {
+    fn new(id: usize, channel: Arc<AtomicChannel<Job>>) -> Self {
         let thread: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let is_busy: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
