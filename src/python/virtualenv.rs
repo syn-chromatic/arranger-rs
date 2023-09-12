@@ -11,7 +11,7 @@ use crate::parsers::cfg_parser::CFGParser;
 use crate::python::pip::{Pip, PipShow};
 use crate::python::python::PythonEnvironment;
 use crate::search::file_search::{FileSearch, SearchThreadScheduler};
-use crate::search::info::FileInfo;
+use crate::search::file_info::FileInfo;
 
 use crate::terminal::Terminal;
 use crate::terminal::{CyanANSI, GreenANSI, RedANSI};

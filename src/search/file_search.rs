@@ -12,8 +12,8 @@ use std::time::Duration;
 
 use regex::Regex;
 
-use crate::search::info::FileInfo;
-use crate::search::progress::{ProgressMetrics, SearchMetrics};
+use crate::search::file_info::FileInfo;
+use crate::search::metrics::{ProgressMetrics, SearchMetrics};
 use crate::threading::{AtomicChannel, ThreadLoop, ThreadManager};
 
 pub struct FileSearch {
@@ -470,6 +470,7 @@ impl SearchThreadScheduler {
         search_metrics: &Arc<SearchMetrics>,
         progress_metrics: &Arc<ProgressMetrics>,
     ) {
+        self.thread_manager.join();
         search_metrics.terminate();
         self.metrics_thread_worker.terminate();
 
@@ -512,7 +513,6 @@ impl SearchThreadScheduler {
             thread::sleep(Duration::from_millis(1));
             let search_activity: SearchActivity = self.get_search_activity(queue.len());
             if search_activity.all_empty() {
-                self.thread_manager.terminate_all();
                 return true;
             }
         }

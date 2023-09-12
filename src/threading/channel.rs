@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 pub struct AtomicChannel<T> {
-    pub sender: Mutex<mpsc::Sender<T>>,
+    pub sender: mpsc::Sender<T>,
     pub receiver: Mutex<mpsc::Receiver<T>>,
     buffer: AtomicUsize,
 }
@@ -12,7 +12,6 @@ pub struct AtomicChannel<T> {
 impl<T> AtomicChannel<T> {
     pub fn new() -> Self {
         let (sender, receiver): (mpsc::Sender<T>, mpsc::Receiver<T>) = mpsc::channel();
-        let sender: Mutex<mpsc::Sender<T>> = Mutex::new(sender);
         let receiver: Mutex<mpsc::Receiver<T>> = Mutex::new(receiver);
         let buffer: AtomicUsize = AtomicUsize::new(0);
 
@@ -24,14 +23,11 @@ impl<T> AtomicChannel<T> {
     }
 
     pub fn send(&self, value: T) -> Result<(), mpsc::SendError<T>> {
-        if let Ok(sender_guard) = self.sender.lock() {
-            let sent_result: Result<(), mpsc::SendError<T>> = sender_guard.send(value);
-            if sent_result.is_ok() {
-                self.buffer.fetch_add(1, Ordering::Release);
-            }
-            return sent_result;
+        let sent_result: Result<(), mpsc::SendError<T>> = self.sender.send(value);
+        if sent_result.is_ok() {
+            self.buffer.fetch_add(1, Ordering::Release);
         }
-        Err(mpsc::SendError(value))
+        sent_result
     }
 
     pub fn send_timeout(&self, mut value: T, timeout: Duration) -> Result<(), mpsc::SendError<T>> {

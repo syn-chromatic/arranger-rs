@@ -15,7 +15,7 @@ use crate::general::table_display::DynamicTable;
 use crate::general::table_display::FileInfoTable;
 
 use crate::search::file_search::{FileSearch, SearchThreadScheduler};
-use crate::search::info::FileInfo;
+use crate::search::file_info::FileInfo;
 
 pub struct SearchCommand {
     option: SearchOption,

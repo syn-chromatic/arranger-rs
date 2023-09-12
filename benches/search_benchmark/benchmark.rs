@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use arranger::search::file_search::{FileSearch, SearchThreadScheduler};
 use arranger::search::formatters::format_time;
-use arranger::search::progress::SearchMetrics;
+use arranger::search::metrics::SearchMetrics;
 
 #[test]
 fn search_benchmark() {
