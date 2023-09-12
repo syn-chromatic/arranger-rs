@@ -106,12 +106,12 @@ impl SearchCommand {
     fn sort_files(&self, files: &mut Vec<FileInfo>) {
         if let Some(sort) = &self.option.sort {
             match sort {
-                SearchSort::SizeAsc => self.sort_ascending_by_size(files),
-                SearchSort::SizeDesc => self.sort_descending_by_size(files),
-                SearchSort::CreatedAsc => self.sort_ascending_by_created(files),
-                SearchSort::CreatedDesc => self.sort_descending_by_created(files),
-                SearchSort::ModifiedAsc => self.sort_ascending_by_modified(files),
-                SearchSort::ModifiedDesc => self.sort_descending_by_modified(files),
+                SearchSort::SizeAscending => self.sort_ascending_by_size(files),
+                SearchSort::SizeDescending => self.sort_descending_by_size(files),
+                SearchSort::CreatedAscending => self.sort_ascending_by_created(files),
+                SearchSort::CreatedDescending => self.sort_descending_by_created(files),
+                SearchSort::ModifiedAscending => self.sort_ascending_by_modified(files),
+                SearchSort::ModifiedDescending => self.sort_descending_by_modified(files),
             }
         }
     }

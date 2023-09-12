@@ -171,12 +171,12 @@ fn parse_search_option_limit(value: &str) -> Result<usize, &'static str> {
 
 #[derive(Debug, Clone)]
 pub enum SearchSort {
-    SizeAsc,
-    SizeDesc,
-    CreatedAsc,
-    CreatedDesc,
-    ModifiedAsc,
-    ModifiedDesc,
+    SizeAscending,
+    SizeDescending,
+    CreatedAscending,
+    CreatedDescending,
+    ModifiedAscending,
+    ModifiedDescending,
 }
 
 impl FromStr for SearchSort {
@@ -184,12 +184,12 @@ impl FromStr for SearchSort {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "size_asc" => Ok(Self::SizeAsc),
-            "size_desc" => Ok(Self::SizeDesc),
-            "created_asc" => Ok(Self::CreatedAsc),
-            "created_desc" => Ok(Self::CreatedDesc),
-            "modified_asc" => Ok(Self::ModifiedAsc),
-            "modified_desc" => Ok(Self::ModifiedDesc),
+            "size_asc" => Ok(Self::SizeAscending),
+            "size_desc" => Ok(Self::SizeDescending),
+            "created_asc" => Ok(Self::CreatedAscending),
+            "created_desc" => Ok(Self::CreatedDescending),
+            "modified_asc" => Ok(Self::ModifiedAscending),
+            "modified_desc" => Ok(Self::ModifiedDescending),
             _ => Err(format!("Invalid Sorting Option")),
         }
     }
