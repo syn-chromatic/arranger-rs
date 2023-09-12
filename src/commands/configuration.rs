@@ -182,8 +182,8 @@ pub enum SearchSort {
 impl FromStr for SearchSort {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        match string {
             "size_asc" => Ok(Self::SizeAscending),
             "size_desc" => Ok(Self::SizeDescending),
             "created_asc" => Ok(Self::CreatedAscending),
@@ -191,6 +191,19 @@ impl FromStr for SearchSort {
             "modified_asc" => Ok(Self::ModifiedAscending),
             "modified_desc" => Ok(Self::ModifiedDescending),
             _ => Err(format!("Invalid Sorting Option")),
+        }
+    }
+}
+
+impl ToString for SearchSort {
+    fn to_string(&self) -> String {
+        match *self {
+            SearchSort::SizeAscending => "Size Ascending".to_string(),
+            SearchSort::SizeDescending => "Size Descending".to_string(),
+            SearchSort::CreatedAscending => "Created Ascending".to_string(),
+            SearchSort::CreatedDescending => "Created Descending".to_string(),
+            SearchSort::ModifiedAscending => "Modified Ascending".to_string(),
+            SearchSort::ModifiedDescending => "Modified Descending".to_string(),
         }
     }
 }

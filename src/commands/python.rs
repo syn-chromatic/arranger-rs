@@ -115,7 +115,7 @@ impl PythonFixEnvCommand {
         let deep_search: bool = self.option.deep_search;
         let mut table = DynamicTable::new(0.6, 1);
         table.set_header("Fix Venv Parameters");
-        table.add_parameter("Deep Search", deep_search);
+        table.add_fmt_parameter("Deep Search", deep_search);
         table.print();
         println!();
     }
@@ -175,8 +175,8 @@ impl PythonExecuteCommand {
 
         let mut table: DynamicTable = DynamicTable::new(0.6, 1);
         table.set_header("Execute Parameters");
-        table.add_parameter("Deep Search", deep_search);
-        table.add_parameter("Command", command);
+        table.add_fmt_parameter("Deep Search", deep_search);
+        table.add_fmt_parameter("Command", command);
         table.print();
         println!();
     }
@@ -234,9 +234,9 @@ impl PythonPackagesCommand {
 
         let mut table: DynamicTable = DynamicTable::new(0.6, 1);
         table.set_header("Packages Parameters");
-        table.add_parameter("Deep Search", deep_search);
-        table.add_parameter("Distill", distill);
-        table.add_parameter("Save", save);
+        table.add_fmt_parameter("Deep Search", deep_search);
+        table.add_fmt_parameter("Distill", distill);
+        table.add_fmt_parameter("Save", save);
         table.print();
         println!();
     }
@@ -389,11 +389,11 @@ impl PythonDLCommand {
 
         let mut table: DynamicTable = DynamicTable::new(0.6, 1);
         table.set_header("Download Parameters");
-        table.add_parameter("Arch", arch);
-        table.add_parameter("Platform", platform);
-        table.add_parameter("Type", package_type);
-        table.add_parameter("Most recent Patch", recent_patch);
-        table.add_parameter("List Results", list_structure);
+        table.add_fmt_parameter("Arch", arch);
+        table.add_fmt_parameter("Platform", platform);
+        table.add_fmt_parameter("Type", package_type);
+        table.add_fmt_parameter("Most recent Patch", recent_patch);
+        table.add_fmt_parameter("List Results", list_structure);
         table.print();
         println!();
     }

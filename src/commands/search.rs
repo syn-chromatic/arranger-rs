@@ -193,19 +193,20 @@ impl SearchCommand {
 
         let mut table: DynamicTable = DynamicTable::new(0.6, 1);
         table.set_header("Search Parameters");
-        table.add_parameter("Filename", filename);
-        table.add_parameter("Extensions", extensions);
-        table.add_parameter("Excluded Dirs", excluded_dirs);
+        table.add_fmt_parameter("Filename", filename);
+        table.add_fmt_parameter("Extensions", extensions);
+        table.add_fmt_parameter("Excluded Dirs", excluded_dirs);
 
         if let Some(sort) = sort {
-            table.add_parameter("Sorting", sort);
+            let sort_string: String = sort.to_string();
+            table.add_string_parameter("Sorting", sort_string);
         }
 
         if let Some(limit) = limit {
-            table.add_parameter("Limit", limit);
+            table.add_fmt_parameter("Limit", limit);
         }
 
-        table.add_parameter("Regex", regex);
+        table.add_fmt_parameter("Regex", regex);
         table.print();
         println!();
     }

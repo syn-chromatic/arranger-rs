@@ -105,7 +105,7 @@ impl SearchMetrics {
     pub fn set_search_path(&mut self, path: &PathBuf) {
         let path_string: String = self.get_path_string(&path);
         if let Ok(mut table) = self.table.lock() {
-            table.add_parameter_string("Path", &path_string);
+            table.add_string_parameter("Path", &path_string);
         }
     }
 
@@ -167,11 +167,11 @@ impl SearchMetrics {
         let time_string: String = format_time(self.get_duration().as_nanos());
 
         if let Ok(mut table) = self.table.lock() {
-            table.add_parameter("Match", match_counter);
-            table.add_parameter("Search", search_counter);
-            table.add_parameter_string("Size", &size_string);
-            table.add_parameter("Threads", threads);
-            table.add_parameter_string("Time", &time_string);
+            table.add_fmt_parameter("Match", match_counter);
+            table.add_fmt_parameter("Search", search_counter);
+            table.add_string_parameter("Size", &size_string);
+            table.add_fmt_parameter("Threads", threads);
+            table.add_string_parameter("Time", &time_string);
 
             let table_string: String = table.get_table_string();
             if let Ok(mut writer) = self.writer.lock() {

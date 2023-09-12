@@ -384,16 +384,22 @@ impl DynamicTable {
         self.header_background_color = ansi.boxed();
     }
 
-    pub fn add_parameter<T: fmt::Debug>(&mut self, attribute: &str, value: T) {
-        let attribute: String = attribute.to_string();
+    pub fn add_fmt_parameter<K, T>(&mut self, attribute: K, value: T)
+    where
+        K: Into<String>,
+        T: fmt::Debug,
+    {
+        let attribute: String = attribute.into();
         let value: String = format!("{:?}", value);
         self.parameters.insert(attribute, value);
     }
 
-    pub fn add_parameter_string(&mut self, attribute: &str, value: &str) {
-        let attribute: String = attribute.to_string();
-        let value: String = value.to_string();
-        self.parameters.insert(attribute, value);
+    pub fn add_string_parameter<K, V>(&mut self, attribute: K, value: V)
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
+        self.parameters.insert(attribute.into(), value.into());
     }
 
     pub fn get_string(&self) -> String {
