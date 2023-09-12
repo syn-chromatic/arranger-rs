@@ -170,3 +170,7 @@ ___
 ### `➢` Search Example V0.5.14
 ![arranger-rs-example](https://github.com/syn-chromatic/arranger-rs/assets/68112904/939543cf-197b-4d3b-b2db-6c473855dd2c)
 
+___
+### `➢` License
+This project is licensed under the GNU General Public License v3.0.<br>
+See the [LICENSE](LICENSE) file for more information.
