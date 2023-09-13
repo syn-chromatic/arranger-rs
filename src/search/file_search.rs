@@ -7,7 +7,6 @@ use std::fs::{Metadata, ReadDir};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::thread;
 use std::time::Duration;
 
 use regex::Regex;
@@ -341,38 +340,8 @@ impl FileSearch {
     }
 }
 
-struct SearchActivity {
-    busy_threads: usize,
-    job_queue: usize,
-    queue_buffer: usize,
-    queue: usize,
-}
-
-impl SearchActivity {
-    fn new(busy_threads: usize, job_queue: usize, queue_buffer: usize, queue: usize) -> Self {
-        SearchActivity {
-            busy_threads,
-            job_queue,
-            queue_buffer,
-            queue,
-        }
-    }
-
-    fn all_empty(&self) -> bool {
-        if self.busy_threads == 0
-            && self.job_queue == 0
-            && self.queue_buffer == 0
-            && self.queue == 0
-        {
-            return true;
-        }
-        false
-    }
-}
-
 pub struct SearchThreadScheduler {
     batch_size: usize,
-    threads: usize,
     file_search: Arc<FileSearch>,
     files_channel: Arc<AtomicChannel<HashSet<FileInfo>>>,
     queue_channel: Arc<AtomicChannel<LinkedList<PathBuf>>>,
@@ -390,7 +359,6 @@ impl SearchThreadScheduler {
 
         SearchThreadScheduler {
             batch_size,
-            threads,
             file_search,
             files_channel,
             queue_channel,
@@ -446,22 +414,18 @@ impl SearchThreadScheduler {
 
     fn spawn_walkers(&self, queue: &mut LinkedList<PathBuf>, search_metrics: &Arc<SearchMetrics>) {
         let progress_metrics: Arc<ProgressMetrics> = search_metrics.get_metrics();
+        self.thread_manager.send_join_signals();
 
         loop {
             let batch: Vec<PathBuf> = self.get_queue_batch(queue);
             let _ = self.add_batched_thread(batch, search_metrics);
+            self.extend_queue(queue);
 
-            let search_activity: SearchActivity = self.get_search_activity(queue.len());
-            progress_metrics.set_threads(search_activity.busy_threads);
-
-            self.extend_queue(queue, &search_activity);
-            self.wait_for_job_queue(&search_activity);
-
-            if self.get_halt_condition(&search_activity, queue) {
+            progress_metrics.set_threads(self.thread_manager.get_active_threads());
+            if self.thread_manager.has_finished() && queue.len() == 0 {
                 break;
             }
         }
-
         self.finalize(search_metrics, &progress_metrics);
     }
 
@@ -474,16 +438,8 @@ impl SearchThreadScheduler {
         search_metrics.terminate();
         self.metrics_thread_worker.terminate();
 
-        let busy_threads: usize = self.thread_manager.get_busy_threads();
-        progress_metrics.set_threads(busy_threads);
+        progress_metrics.set_threads(self.thread_manager.get_busy_threads());
         search_metrics.finalize();
-    }
-
-    fn wait_for_job_queue(&self, search_activity: &SearchActivity) {
-        let job_queue: usize = search_activity.job_queue;
-        if job_queue >= self.threads * 2 {
-            thread::sleep(Duration::from_micros(1));
-        }
     }
 
     fn metrics_display_thread(&self, search_metrics: &Arc<SearchMetrics>) {
@@ -494,39 +450,14 @@ impl SearchThreadScheduler {
         self.metrics_thread_worker.start(closure);
     }
 
-    fn get_search_activity(&self, queue: usize) -> SearchActivity {
-        let busy_threads: usize = self.thread_manager.get_busy_threads();
-        let job_queue: usize = self.thread_manager.get_job_queue();
-        let queue_buffer: usize = self.queue_channel.get_buffer();
-
-        let search_activity: SearchActivity =
-            SearchActivity::new(busy_threads, job_queue, queue_buffer, queue);
-        search_activity
-    }
-
-    fn get_halt_condition(
-        &self,
-        search_activity: &SearchActivity,
-        queue: &mut LinkedList<PathBuf>,
-    ) -> bool {
-        if search_activity.all_empty() {
-            thread::sleep(Duration::from_millis(1));
-            let search_activity: SearchActivity = self.get_search_activity(queue.len());
-            if search_activity.all_empty() {
-                return true;
-            }
-        }
-        false
-    }
-
     fn clean_receiver_channels(&self) {
         self.files_channel.clear_receiver();
         self.queue_channel.clear_receiver();
     }
 
-    fn extend_queue(&self, queue: &mut LinkedList<PathBuf>, search_activity: &SearchActivity) {
-        let queue_buffer: usize = search_activity.queue_buffer;
-        for _ in 0..queue_buffer {
+    fn extend_queue(&self, queue: &mut LinkedList<PathBuf>) {
+        let pending_queue: usize = self.queue_channel.get_pending_count();
+        for _ in 0..pending_queue {
             if let Ok(received) = self.queue_channel.recv() {
                 queue.extend(received);
             }

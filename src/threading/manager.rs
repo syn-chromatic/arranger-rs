@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -8,21 +8,23 @@ use crate::threading::channel::AtomicChannel;
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct ThreadManager {
+    thread_size: usize,
     channel: Arc<AtomicChannel<Job>>,
     workers: Vec<ThreadWorker>,
-    is_terminated: AtomicBool,
+    dispatch_worker: AtomicUsize,
 }
 
 impl ThreadManager {
     pub fn new(thread_size: usize) -> Self {
         let channel: Arc<AtomicChannel<Job>> = Arc::new(AtomicChannel::new());
         let workers: Vec<ThreadWorker> = Self::create_workers(thread_size, channel.clone());
-        let is_terminated: AtomicBool = AtomicBool::new(true);
+        let dispatch_worker: AtomicUsize = AtomicUsize::new(0);
 
         ThreadManager {
+            thread_size,
             channel,
             workers,
-            is_terminated,
+            dispatch_worker,
         }
     }
 
@@ -30,14 +32,10 @@ impl ThreadManager {
     where
         F: FnOnce() + Send + 'static,
     {
-        let job: Job = Box::new(function);
-        self.channel
-            .send(job)
-            .expect("Failed to send job to Thread Manager");
-
-        if self.is_terminated() {
-            self.start_workers(&self.workers);
-        }
+        let dispatch_worker: usize = self.dispatch_worker.load(Ordering::Acquire);
+        let worker: &ThreadWorker = &self.workers[dispatch_worker];
+        worker.send(function);
+        self.update_dispatch_worker(dispatch_worker);
     }
 
     pub fn join(&self) {
@@ -48,21 +46,35 @@ impl ThreadManager {
         for worker in self.workers.iter() {
             worker.join();
         }
-
-        self.is_terminated.store(true, Ordering::Release);
     }
 
-    pub fn terminate_all(&self) {
-        for worker in self.workers.iter() {
-            worker.send_termination_signal();
+    pub fn set_thread_size(&mut self, thread_size: usize) {
+        if thread_size > self.workers.len() {
+            let additional_threads: usize = thread_size - self.workers.len();
+            let channel: Arc<AtomicChannel<Job>> = self.channel.clone();
+            let workers: Vec<ThreadWorker> = Self::create_workers(additional_threads, channel);
+            self.workers.extend(workers);
+        } else if thread_size < self.workers.len() {
+            let split_workers: Vec<ThreadWorker> = self.workers.split_off(thread_size);
+            for worker in split_workers.iter() {
+                worker.send_termination_signal();
+            }
         }
+    }
 
+    pub fn send_join_signals(&self) {
         for worker in self.workers.iter() {
-            worker.join();
+            worker.send_join_signal();
         }
+    }
 
-        self.is_terminated.store(true, Ordering::Release);
-        self.clear_job_queue();
+    pub fn has_finished(&self) -> bool {
+        for worker in self.workers.iter() {
+            if worker.is_active() {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn get_active_threads(&self) -> usize {
@@ -86,32 +98,24 @@ impl ThreadManager {
     }
 
     pub fn get_job_queue(&self) -> usize {
-        let job_queue: usize = self.channel.get_buffer();
+        let job_queue: usize = self.channel.get_pending_count();
         job_queue
+    }
+
+    pub fn terminate_all(&self) {
+        for worker in self.workers.iter() {
+            worker.send_termination_signal();
+        }
+
+        for worker in self.workers.iter() {
+            worker.join();
+        }
+
+        self.clear_job_queue();
     }
 
     pub fn clear_job_queue(&self) {
         self.channel.clear_receiver();
-    }
-
-    pub fn modify_thread_size(&mut self, thread_size: usize) {
-        if thread_size > self.workers.len() {
-            let additional_threads: usize = thread_size - self.workers.len();
-            let channel: Arc<AtomicChannel<Job>> = self.channel.clone();
-            let workers: Vec<ThreadWorker> = Self::create_workers(additional_threads, channel);
-            self.start_workers(&workers);
-            self.workers.extend(workers);
-        } else if thread_size < self.workers.len() {
-            let split_workers: Vec<ThreadWorker> = self.workers.split_off(thread_size);
-            for worker in split_workers {
-                worker.send_termination_signal();
-            }
-        }
-    }
-
-    pub fn is_terminated(&self) -> bool {
-        let is_terminated: bool = self.is_terminated.load(Ordering::Acquire);
-        is_terminated
     }
 }
 
@@ -121,16 +125,19 @@ impl ThreadManager {
 
         for id in 0..thread_size {
             let worker: ThreadWorker = ThreadWorker::new(id, channel.clone());
+            worker.start();
             workers.push(worker);
         }
         workers
     }
 
-    fn start_workers(&self, workers: &Vec<ThreadWorker>) {
-        self.is_terminated.store(false, Ordering::Release);
-        for worker in workers.iter() {
-            worker.start();
-        }
+    fn update_dispatch_worker(&self, dispatch_worker: usize) {
+        let next_dispatch: usize = if dispatch_worker >= (self.thread_size - 1) {
+            0
+        } else {
+            dispatch_worker + 1
+        };
+        self.dispatch_worker.store(next_dispatch, Ordering::Release);
     }
 }
 
@@ -169,12 +176,24 @@ impl ThreadWorker {
 
     fn start(&self) {
         if !self.is_active() {
+            self.is_active.store(true, Ordering::Release);
             let worker_loop = self.create_worker_loop();
             let thread: thread::JoinHandle<()> = thread::spawn(worker_loop);
             if let Ok(mut thread_guard) = self.thread.lock() {
                 *thread_guard = Some(thread);
             }
         }
+    }
+
+    fn send<F>(&self, function: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.start();
+        let job: Job = Box::new(function);
+        self.channel
+            .send(job)
+            .expect(&format!("Failed to send job to Worker [{}]", self.id));
     }
 
     fn join(&self) {
@@ -195,12 +214,27 @@ impl ThreadWorker {
         is_busy
     }
 
+    fn is_finished(&self) -> bool {
+        if let Ok(thread_option) = self.thread.lock() {
+            if let Some(thread) = thread_option.as_ref() {
+                let is_finished: bool = thread.is_finished();
+                return is_finished;
+            }
+        }
+        false
+    }
+
     fn send_join_signal(&self) {
         self.join_signal.store(true, Ordering::Release);
     }
 
     fn send_termination_signal(&self) {
         self.termination_signal.store(true, Ordering::Release);
+        let closure: Job = Box::new(|| {});
+        self.channel.send(Box::new(closure)).expect(&format!(
+            "Failed to send termination to Worker [{}]",
+            self.id
+        ));
     }
 
     fn create_worker_loop(&self) -> impl Fn() {
@@ -212,10 +246,9 @@ impl ThreadWorker {
 
         let worker_loop = move || {
             let recv_timeout: Duration = Duration::from_micros(1);
-            is_active.store(true, Ordering::Release);
             while !termination_signal.load(Ordering::Acquire) {
                 if join_signal.load(Ordering::Acquire) {
-                    if channel.get_buffer() == 0 {
+                    if channel.get_pending_count() == 0 && channel.get_receive_count() > 0 {
                         break;
                     }
                 }
@@ -227,7 +260,6 @@ impl ThreadWorker {
                 }
             }
             is_active.store(false, Ordering::Release);
-            join_signal.store(false, Ordering::Release);
             termination_signal.store(false, Ordering::Release);
         };
         worker_loop
