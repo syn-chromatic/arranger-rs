@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -97,6 +98,22 @@ impl ThreadManager {
         busy_threads
     }
 
+    pub fn get_received_jobs(&self) -> Vec<usize> {
+        let mut received_jobs: Vec<usize> = Vec::new();
+        for worker in self.workers.iter() {
+            received_jobs.push(worker.get_received_jobs());
+        }
+        received_jobs
+    }
+
+    pub fn get_receiver_timeouts(&self) -> usize {
+        let mut timeouts: usize = 0;
+        for worker in self.workers.iter() {
+            timeouts += worker.get_receiver_timeouts();
+        }
+        timeouts
+    }
+
     pub fn get_job_queue(&self) -> usize {
         let job_queue: usize = self.channel.get_pending_count();
         job_queue
@@ -147,6 +164,8 @@ struct ThreadWorker {
     channel: Arc<AtomicChannel<Job>>,
     is_active: Arc<AtomicBool>,
     is_busy: Arc<AtomicBool>,
+    recv_jobs: Arc<AtomicUsize>,
+    recv_timeouts: Arc<AtomicUsize>,
     join_signal: Arc<AtomicBool>,
     termination_signal: Arc<AtomicBool>,
 }
@@ -156,6 +175,8 @@ impl ThreadWorker {
         let thread: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
         let is_active: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let is_busy: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let recv_jobs: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        let recv_timeouts: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
         let join_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let termination_signal: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
@@ -165,6 +186,8 @@ impl ThreadWorker {
             channel,
             is_active,
             is_busy,
+            recv_jobs,
+            recv_timeouts,
             join_signal,
             termination_signal,
         }
@@ -199,6 +222,7 @@ impl ThreadWorker {
     fn join(&self) {
         if let Ok(mut thread_option) = self.thread.lock() {
             if let Some(thread) = thread_option.take() {
+                self.send_channel_release();
                 let _ = thread.join();
             }
         }
@@ -224,28 +248,43 @@ impl ThreadWorker {
         false
     }
 
+    fn get_received_jobs(&self) -> usize {
+        let received_jobs: usize = self.recv_jobs.load(Ordering::Acquire);
+        received_jobs
+    }
+
+    fn get_receiver_timeouts(&self) -> usize {
+        let timeouts: usize = self.recv_timeouts.load(Ordering::Acquire);
+        timeouts
+    }
+
     fn send_join_signal(&self) {
         self.join_signal.store(true, Ordering::Release);
     }
 
     fn send_termination_signal(&self) {
         self.termination_signal.store(true, Ordering::Release);
+        self.send_channel_release();
+    }
+
+    fn send_channel_release(&self) {
         let closure: Job = Box::new(|| {});
-        self.channel.send(Box::new(closure)).expect(&format!(
-            "Failed to send termination to Worker [{}]",
-            self.id
-        ));
+        self.channel
+            .send(Box::new(closure))
+            .expect(&format!("Failed to release Worker [{}]", self.id));
     }
 
     fn create_worker_loop(&self) -> impl Fn() {
         let channel: Arc<AtomicChannel<Job>> = self.channel.clone();
         let is_active: Arc<AtomicBool> = self.is_active.clone();
         let is_busy: Arc<AtomicBool> = self.is_busy.clone();
+        let recv_jobs: Arc<AtomicUsize> = self.recv_jobs.clone();
+        let recv_timeouts: Arc<AtomicUsize> = self.recv_timeouts.clone();
         let join_signal: Arc<AtomicBool> = self.join_signal.clone();
         let termination_signal: Arc<AtomicBool> = self.termination_signal.clone();
 
         let worker_loop = move || {
-            let recv_timeout: Duration = Duration::from_micros(1);
+            let timeout: Duration = Duration::from_millis(50);
             while !termination_signal.load(Ordering::Acquire) {
                 if join_signal.load(Ordering::Acquire) {
                     if channel.get_pending_count() == 0 && channel.get_receive_count() > 0 {
@@ -253,10 +292,14 @@ impl ThreadWorker {
                     }
                 }
 
-                if let Ok(job) = channel.recv_timeout(recv_timeout) {
+                let recv: Result<Job, RecvTimeoutError> = channel.recv_timeout(timeout);
+                if let Ok(job) = recv {
+                    recv_jobs.fetch_add(1, Ordering::Release);
                     is_busy.store(true, Ordering::Release);
                     job();
                     is_busy.store(false, Ordering::Release);
+                } else if let Err(_) = recv {
+                    recv_timeouts.fetch_add(1, Ordering::Release);
                 }
             }
             is_active.store(false, Ordering::Release);

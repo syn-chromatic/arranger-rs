@@ -378,6 +378,7 @@ impl SearchThreadScheduler {
             self.metrics_display_thread(&search_metrics);
             self.spawn_walkers(&mut queue, &search_metrics);
         }
+
         let files: HashSet<FileInfo> = self.get_received_files();
         self.clean_receiver_channels();
         files
