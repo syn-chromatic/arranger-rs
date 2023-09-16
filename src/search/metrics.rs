@@ -13,7 +13,7 @@ use crate::general::table_display::DynamicTable;
 use crate::terminal::ConsoleWriter;
 
 pub struct ProgressMetrics {
-    search_counter: AtomicUsize,
+    pub search_counter: AtomicUsize,
     match_counter: AtomicUsize,
     search_bytes: AtomicUsize,
     threads: AtomicUsize,
