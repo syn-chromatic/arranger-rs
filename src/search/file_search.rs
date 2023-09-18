@@ -409,8 +409,8 @@ impl SearchThreadScheduler {
 impl SearchThreadScheduler {
     fn get_received_files(&self) -> HashSet<FileInfo> {
         let mut files: HashSet<FileInfo> = HashSet::new();
-        while let Ok(mut files_receive) = self.files_channel.try_recv() {
-            for file_info in files_receive.drain() {
+        while let Ok((mut value, _)) = self.files_channel.try_recv() {
+            for file_info in value.drain() {
                 files.insert(file_info);
             }
         }
@@ -424,7 +424,8 @@ impl SearchThreadScheduler {
         loop {
             let batch: Vec<PathBuf> = self.get_queue_batch(queue);
             self.add_batched_thread(batch, search_metrics);
-            progress_metrics.set_threads(self.thread_manager.get_active_threads());
+
+            progress_metrics.set_busy_threads(self.thread_manager.get_busy_threads());
 
             if self.queue_channel.get_available_count() > 0 {
                 self.extend_queue(queue);
@@ -447,7 +448,7 @@ impl SearchThreadScheduler {
         search_metrics.terminate();
         self.metrics_thread_worker.terminate();
 
-        progress_metrics.set_threads(self.thread_manager.get_busy_threads());
+        progress_metrics.set_busy_threads(self.thread_manager.get_busy_threads());
         search_metrics.finalize();
     }
 
@@ -467,8 +468,8 @@ impl SearchThreadScheduler {
     fn extend_queue(&self, queue: &mut LinkedList<PathBuf>) {
         let available_queue: usize = self.queue_channel.get_available_count();
         for _ in 0..available_queue {
-            if let Ok(received) = self.queue_channel.recv() {
-                queue.extend(received);
+            if let Ok((value, _)) = self.queue_channel.recv() {
+                queue.extend(value);
             }
         }
     }

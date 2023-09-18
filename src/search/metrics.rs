@@ -13,10 +13,10 @@ use crate::general::table_display::DynamicTable;
 use crate::terminal::ConsoleWriter;
 
 pub struct ProgressMetrics {
-    pub search_counter: AtomicUsize,
+    search_counter: AtomicUsize,
     match_counter: AtomicUsize,
     search_bytes: AtomicUsize,
-    threads: AtomicUsize,
+    busy_threads: AtomicUsize,
 }
 
 impl ProgressMetrics {
@@ -24,13 +24,13 @@ impl ProgressMetrics {
         let search_counter: AtomicUsize = AtomicUsize::new(0);
         let match_counter: AtomicUsize = AtomicUsize::new(0);
         let search_bytes: AtomicUsize = AtomicUsize::new(0);
-        let threads: AtomicUsize = AtomicUsize::new(0);
+        let busy_threads: AtomicUsize = AtomicUsize::new(0);
 
         ProgressMetrics {
             search_counter,
             match_counter,
             search_bytes,
-            threads,
+            busy_threads,
         }
     }
 
@@ -47,8 +47,8 @@ impl ProgressMetrics {
         self.search_bytes.fetch_add(bytes, Ordering::Relaxed);
     }
 
-    pub fn set_threads(&self, threads: usize) {
-        self.threads.store(threads, Ordering::Relaxed);
+    pub fn set_busy_threads(&self, threads: usize) {
+        self.busy_threads.store(threads, Ordering::Relaxed);
     }
 }
 
@@ -161,7 +161,7 @@ impl SearchMetrics {
         let search_bytes: usize = self.metrics.search_bytes.load(ordering);
         let match_counter: usize = self.metrics.match_counter.load(ordering);
         let search_counter: usize = self.metrics.search_counter.load(ordering);
-        let threads: usize = self.metrics.threads.load(ordering);
+        let busy_threads: usize = self.metrics.busy_threads.load(ordering);
 
         let size_string: String = format_size(search_bytes);
         let time_string: String = format_time(self.get_duration().as_nanos());
@@ -170,7 +170,7 @@ impl SearchMetrics {
             table.add_fmt_parameter("Match", match_counter);
             table.add_fmt_parameter("Search", search_counter);
             table.add_string_parameter("Size", &size_string);
-            table.add_fmt_parameter("Threads", threads);
+            table.add_fmt_parameter("Threads", busy_threads);
             table.add_string_parameter("Time", &time_string);
 
             let table_string: String = table.get_table_string();
