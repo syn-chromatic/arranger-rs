@@ -237,28 +237,23 @@ impl<T> AtomicChannel<T> {
     }
 
     pub fn get_sent_count(&self) -> usize {
-        let sent_count: usize = self.counters.get_sent_count();
-        sent_count
+        self.counters.get_sent_count()
     }
 
     pub fn get_sending_count(&self) -> usize {
-        let sending_count: usize = self.counters.get_sending_count();
-        sending_count
+        self.counters.get_sending_count()
     }
 
     pub fn get_received_count(&self) -> usize {
-        let received_count: usize = self.counters.get_received_count();
-        received_count
+        self.counters.get_received_count()
     }
 
     pub fn get_receiving_count(&self) -> usize {
-        let receiving_count: usize = self.counters.get_receiving_count();
-        receiving_count
+        self.counters.get_receiving_count()
     }
 
     pub fn get_concluded_count(&self) -> usize {
-        let concluded_count: usize = self.counters.get_concluded_count();
-        concluded_count
+        self.counters.get_concluded_count()
     }
 
     pub fn clear_receiver(&self) {
