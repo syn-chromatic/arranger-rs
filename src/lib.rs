@@ -8,5 +8,4 @@ pub mod rust;
 pub mod search;
 pub mod structures;
 pub mod terminal;
-pub mod threading;
 pub mod utils;

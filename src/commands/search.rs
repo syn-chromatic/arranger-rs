@@ -41,7 +41,7 @@ impl SearchCommand {
             };
 
             let threads: usize = self.option.threads;
-            let batch_size: usize = 100;
+            let batch_size: usize = 32;
             let search_scheduler: SearchThreadScheduler =
                 SearchThreadScheduler::new(threads, batch_size, file_search);
 
