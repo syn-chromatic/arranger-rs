@@ -4,7 +4,7 @@
 name = "arranger"
 repository = "https://github.com/syn-chromatic/arranger-rs"
 authors = ["Synchromatic <synchromatic.github@gmail.com>"]
-version = "0.6.3"
+version = "0.6.4"
 edition = "2021"
 license = "GPL-3.0"
 
@@ -30,7 +30,7 @@ version = "0.2"
 
 
 [dependencies.thread-manager]
-version = "0.9.2"
+version = "0.9.4"
 
 
 [dependencies.clap]

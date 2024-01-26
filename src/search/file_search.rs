@@ -388,7 +388,7 @@ impl SearchThreadScheduler {
         let progress_metrics: Arc<ProgressMetrics> = search_metrics.get_metrics();
         self.add_batched_threads(queue, search_metrics);
 
-        for (r_files, r_queue) in self.thread_manager.results() {
+        for (r_files, r_queue) in self.thread_manager.yield_results() {
             files.extend(r_files);
             queue.extend(r_queue);
 
