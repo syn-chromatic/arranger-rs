@@ -1,4 +1,4 @@
 .cargo
-cargo.lock
+*.lock
 /target
 /benches/search_benchmark/benchmark_files
