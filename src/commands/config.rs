@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use clap::{Parser, Subcommand};
 
-use crate::general::version::SemanticVersion;
+use crate::misc::version::SemanticVersion;
 
 #[derive(Debug, Parser)]
 #[command(name = "Arranger")]

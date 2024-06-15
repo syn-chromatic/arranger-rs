@@ -1,7 +1,7 @@
-mod ansi_sequences;
+mod ansi;
 mod terminal;
 mod writer;
 
-pub use ansi_sequences::*;
+pub use ansi::*;
 pub use terminal::*;
 pub use writer::*;

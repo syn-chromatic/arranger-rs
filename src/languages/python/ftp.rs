@@ -5,10 +5,10 @@ use std::io;
 
 use regex::Regex;
 
-use crate::general::https::HTTPS;
+use crate::misc::https::HTTPS;
+use crate::misc::version::{PreRelease, SemanticVersion};
 use crate::terminal::Terminal;
 use crate::terminal::YellowANSI;
-use crate::general::version::{PreRelease, SemanticVersion};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum LinkType {

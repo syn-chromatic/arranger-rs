@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use crate::search::formatters::format_size;
 use crate::search::formatters::format_time;
 
-use crate::general::table_display::DynamicTable;
+use crate::misc::table_display::DynamicTable;
 use crate::terminal::ConsoleWriter;
 
 pub struct ProgressMetrics {

@@ -1,12 +1,8 @@
-pub mod ansi_support;
 pub mod commands;
-pub mod general;
-pub mod interrupt_handler;
+pub mod languages;
+pub mod misc;
 pub mod parsers;
-pub mod python;
-pub mod rust;
 pub mod search;
-pub mod structures;
 pub mod terminal;
 pub mod utils;
 
@@ -16,12 +12,12 @@ use clap::error::Error as ClapError;
 use clap::Parser;
 use tokio::runtime::Runtime;
 
-use crate::ansi_support::AnsiSupport;
+use crate::misc::ansi_support::AnsiSupport;
 
-use crate::commands::configuration::Cli;
-use crate::commands::configuration::Commands;
-use crate::commands::configuration::PythonSubCommands;
-use crate::commands::configuration::RustSubCommands;
+use crate::commands::config::Cli;
+use crate::commands::config::Commands;
+use crate::commands::config::PythonSubCommands;
+use crate::commands::config::RustSubCommands;
 
 use crate::commands::python::PythonCreateEnvCommand;
 use crate::commands::python::PythonDLCommand;
@@ -33,7 +29,7 @@ use crate::commands::search::SearchCommand;
 
 use crate::utils::OptionsPrinter;
 
-use crate::interrupt_handler::InterruptHandler;
+use crate::misc::interrupt_handler::InterruptHandler;
 use crate::terminal::{ANSICode, CursorOnANSI, LineWrapOnANSI, ResetANSI};
 
 fn main() {

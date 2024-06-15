@@ -1,4 +1,4 @@
-use arranger::general::version::SemanticVersion;
+use arranger::misc::version::SemanticVersion;
 use regex::Regex;
 use std::time::Instant;
 

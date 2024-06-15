@@ -8,7 +8,7 @@ use std::str;
 use std::string::FromUtf8Error;
 use std::thread;
 
-use crate::general::path::WPath;
+use super::path::WPath;
 use crate::terminal::Terminal;
 use crate::terminal::{GreenANSI, RedANSI, YellowANSI};
 

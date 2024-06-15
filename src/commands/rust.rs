@@ -1,5 +1,5 @@
-use crate::commands::configuration::RustVSCodeTasksOption;
-use crate::rust::tasks::RustVSCodeTask;
+use crate::commands::config::RustVSCodeTasksOption;
+use crate::languages::rust::tasks::RustVSCodeTask;
 
 use crate::terminal::CyanANSI;
 use crate::terminal::Terminal;

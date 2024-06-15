@@ -4,7 +4,7 @@ use std::io;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::general::path::WPath;
+use crate::misc::path::WPath;
 use crate::terminal::Terminal;
 use crate::terminal::{CyanANSI, GreenANSI, RedANSI};
 

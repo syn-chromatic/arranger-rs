@@ -10,23 +10,23 @@ use dirs;
 use crate::terminal::Terminal;
 use crate::terminal::{GreenANSI, RedANSI, YellowANSI};
 
-use crate::commands::configuration::FixVirtualEnvOption;
-use crate::commands::configuration::PackagesOption;
-use crate::commands::configuration::PythonDownloadOption;
-use crate::commands::configuration::VirtualEnvExecuteOption;
-use crate::commands::configuration::VirtualEnvOption;
+use crate::commands::config::FixVirtualEnvOption;
+use crate::commands::config::PackagesOption;
+use crate::commands::config::PythonDownloadOption;
+use crate::commands::config::VirtualEnvExecuteOption;
+use crate::commands::config::VirtualEnvOption;
 
-use crate::general::https::HTTPS;
-use crate::general::path::WPath;
-use crate::general::table_display::DynamicTable;
-use crate::general::version::SemanticVersion;
+use crate::misc::https::HTTPS;
+use crate::misc::path::WPath;
+use crate::misc::table_display::DynamicTable;
+use crate::misc::version::SemanticVersion;
 
-use crate::python::ftp::PythonFTPRetriever;
-use crate::python::pip::{PipMetadata, PipPackage, PipPackageParser};
-use crate::python::python::PythonEnvironment;
-use crate::python::virtualenv::VirtualEnv;
-use crate::python::virtualenv::VirtualEnvCFG;
-use crate::python::virtualenv::VirtualEnvSearch;
+use crate::languages::python::ftp::PythonFTPRetriever;
+use crate::languages::python::pip::{PipMetadata, PipPackage, PipPackageParser};
+use crate::languages::python::python::PythonEnvironment;
+use crate::languages::python::virtualenv::VirtualEnv;
+use crate::languages::python::virtualenv::VirtualEnvCFG;
+use crate::languages::python::virtualenv::VirtualEnvSearch;
 
 pub struct PythonCreateEnvCommand {
     option: VirtualEnvOption,

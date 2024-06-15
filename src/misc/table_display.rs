@@ -1,8 +1,8 @@
 use std::fmt;
 
-use crate::structures::LinkedHashMap;
+use crate::misc::linked_hashmap::LinkedHashMap;
 
-use crate::general::path::WPath;
+use super::path::WPath;
 use crate::search::file_info::FileInfo;
 use crate::utils::StringOp;
 

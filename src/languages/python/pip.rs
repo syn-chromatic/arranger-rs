@@ -6,10 +6,11 @@ use std::io;
 use std::io::BufRead;
 use std::path::PathBuf;
 
-use crate::general::path::WPath;
-use crate::general::shell::{CommandExecute, CommandResponse};
-use crate::general::version::SemanticVersion;
-use crate::python::python::PythonEnvironment;
+use super::python::PythonEnvironment;
+
+use crate::misc::path::WPath;
+use crate::misc::shell::{CommandExecute, CommandResponse};
+use crate::misc::version::SemanticVersion;
 
 use crate::terminal::RedANSI;
 use crate::terminal::Terminal;

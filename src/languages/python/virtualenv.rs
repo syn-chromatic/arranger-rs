@@ -3,15 +3,16 @@ use std::io;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::general::path::WPath;
-use crate::general::shell::{CommandExecute, CommandResponse};
-use crate::general::version::SemanticVersion;
+use super::pip::{Pip, PipShow};
+use super::python::PythonEnvironment;
+
+use crate::misc::path::WPath;
+use crate::misc::shell::{CommandExecute, CommandResponse};
+use crate::misc::version::SemanticVersion;
 use crate::parsers::cfg_parser::CFGLine;
 use crate::parsers::cfg_parser::CFGParser;
-use crate::python::pip::{Pip, PipShow};
-use crate::python::python::PythonEnvironment;
-use crate::search::file_search::{FileSearch, SearchThreadScheduler};
 use crate::search::file_info::FileInfo;
+use crate::search::file_search::{FileSearch, SearchThreadScheduler};
 
 use crate::terminal::Terminal;
 use crate::terminal::{CyanANSI, GreenANSI, RedANSI};
